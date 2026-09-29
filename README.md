@@ -5,6 +5,12 @@
 **How the pipeline works, step by step: https://mendeltem.github.io/valdo-cmb-qc/architecture.html** -- from the T2* volume to the list of microbleeds,
 with the network diagram and what each design decision was worth.
 
+**Slice viewer (result quality control): https://mendeltem.github.io/valdo-cmb-qc/slices/** -- two large axial images per patient,
+reference annotation on the left, the overlays of the model variants on the right (dropdown), scroll = z; volumes in ml, works on phones.
+
+**Code, environment and reproduction commands: https://github.com/mendeltem/cmb-valdo-chain** (README with install, data layout and the
+numbered pipeline scripts).
+
 An interactive quality-control view of automatic cerebral microbleed detection on the 57 cross-validation cases of the
 VALDO 2021 challenge, Task 2 (T2*-weighted MRI): axial slices in two columns per patient, reference annotation (yellow) on the left,
 network prediction (red) on the right (anisotropic 3D U-Net, 5-fold cross-validation; every case is predicted by the model that never saw it).
