@@ -3,23 +3,23 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Cerebral microbleed detection on T2*-GRE: from input to output</title>
+<title>Cerebral microbleed detection on T2*-GRE and SWI: how the pipeline was built</title>
 <style>
   :root { --ink:#1c2430; --soft:#5b6878; --line:#d5dbe3; --bg:#f6f8fb; --card:#ffffff;
-          --kept:#1f8a4c; --changed:#1866c4; --removed:#c0392b; --nogain:#8a6d1f; --open:#6c5ce7; }
+          --tour:#1866c4; --meas:#1f8a4c; --std:#4f6d8a; --nogain:#8a6d1f; --open:#6c5ce7; --harm:#c0392b; }
   * { box-sizing:border-box; }
   body { margin:0; font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; color:var(--ink); background:var(--bg); }
   main { max-width:980px; margin:0 auto; padding:18px 14px 60px; }
   h1 { font-size:1.55rem; margin:.4rem 0 .2rem; } h2 { font-size:1.2rem; margin:2.2rem 0 .6rem; border-bottom:2px solid var(--line); padding-bottom:.25rem; }
+  h3 { font-size:1.02rem; margin:1.4rem 0 .4rem; }
   p.lead { color:var(--soft); margin:.2rem 0 1rem; }
   .legend { display:flex; flex-wrap:wrap; gap:.4rem .9rem; font-size:.85rem; margin:.6rem 0 1rem; }
   .tag { display:inline-block; padding:.05rem .5rem; border-radius:999px; font-size:.75rem; font-weight:600; color:#fff; white-space:nowrap; }
-  .kept{background:var(--kept);} .changed{background:var(--changed);} .removed{background:var(--removed);} .nogain{background:var(--nogain);} .open{background:var(--open);}
+  .tour{background:var(--tour);} .meas{background:var(--meas);} .std{background:var(--std);} .nogain{background:var(--nogain);} .open{background:var(--open);} .harm{background:var(--harm);}
   .flow { display:flex; flex-direction:column; align-items:stretch; }
-  details.step { background:var(--card); border:1px solid var(--line); border-left:6px solid var(--changed); border-radius:10px; padding:.55rem .8rem; }
-  details.step[data-s="kept"]{border-left-color:var(--kept);} details.step[data-s="removed"]{border-left-color:var(--removed);}
-  details.step[data-s="nogain"]{border-left-color:var(--nogain);} details.step[data-s="open"]{border-left-color:var(--open);}
-  details.step[data-s="io"]{border-left-color:#222;}
+  details.step { background:var(--card); border:1px solid var(--line); border-left:6px solid var(--std); border-radius:10px; padding:.55rem .8rem; }
+  details.step[data-s="tour"]{border-left-color:var(--tour);} details.step[data-s="meas"]{border-left-color:var(--meas);}
+  details.step[data-s="open"]{border-left-color:var(--open);} details.step[data-s="io"]{border-left-color:#222;}
   summary { cursor:pointer; list-style:none; display:flex; flex-wrap:wrap; gap:.3rem .6rem; align-items:baseline; }
   summary::-webkit-details-marker { display:none; }
   summary .n { font-weight:700; color:var(--soft); min-width:1.6rem; } summary .t { font-weight:650; } summary .shape { margin-left:auto; font:600 .78rem ui-monospace,Menlo,Consolas,monospace; color:var(--soft); }
@@ -29,11 +29,12 @@
   details.step dt { font-weight:600; color:var(--soft); } details.step dd { margin:0; }
   .arrow { align-self:center; color:var(--soft); font-size:1.2rem; line-height:1.1; margin:.1rem 0; }
   .num { font:600 .9em ui-monospace,Menlo,Consolas,monospace; }
-  sup.r { font-size:.7em; line-height:0; } sup.r a { color:var(--changed); text-decoration:none; font-weight:600; }
+  sup.r { font-size:.7em; line-height:0; } sup.r a { color:var(--tour); text-decoration:none; font-weight:600; }
+  a.lb { color:var(--soft); font-size:.82em; text-decoration:none; border-bottom:1px dotted var(--soft); white-space:nowrap; }
   table { border-collapse:collapse; width:100%; font-size:.9rem; background:var(--card); } th,td { border:1px solid var(--line); padding:.35rem .5rem; text-align:left; vertical-align:top; }
-  th { background:#eef2f7; } .scroll { overflow-x:auto; }
+  th { background:#eef2f7; } .scroll { overflow-x:auto; } td.r, th.r { text-align:right; white-space:nowrap; }
   .bars { display:grid; grid-template-columns: minmax(150px,1.4fr) 3fr auto; gap:.35rem .6rem; align-items:center; font-size:.9rem; }
-  .bar { height:16px; border-radius:4px; background:var(--changed); } .bar.g{background:var(--kept);} .bar.r{background:#9aa6b5;}
+  .bar { height:16px; border-radius:4px; background:var(--tour); } .bar.g{background:var(--meas);} .bar.r{background:#9aa6b5;}
   .scroll svg { min-width:760px; }
   svg text { font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
   .note { background:#fff8e6; border:1px solid #f0dca0; border-radius:8px; padding:.6rem .8rem; font-size:.92rem; }
@@ -41,162 +42,290 @@
   ol.refs li:target { background:#fff8e6; }
   footer { margin-top:2.5rem; color:var(--soft); font-size:.85rem; border-top:1px solid var(--line); padding-top:.8rem; }
   code { font:.88em ui-monospace,Menlo,Consolas,monospace; background:#eef2f7; padding:0 .25rem; border-radius:4px; }
+  @media (max-width:600px){ details.step > div { margin-left:.4rem; } details.step dl { grid-template-columns:1fr; } }
 </style>
 </head>
 <body>
 <main>
-<h1>Cerebral microbleed detection on T2*-GRE: from input to output</h1>
-<p class="lead">How one MRI volume becomes a list of microbleeds, which building blocks of the published reference pipeline (MicrobleedNet, Sundaresan et al. 2023<sup class="r"><a href="#r1">1</a></sup>)
-were kept, changed or removed, and what each decision was worth. All numbers: VALDO 2021 Task 2<sup class="r"><a href="#r2">2</a></sup>, 57 cases, 5-fold cross-validation, pooled lesion-level F1,
-out-of-fold, paired against the previous version of the chain with a 95 % bootstrap interval in brackets. Superscript numbers point to the <a href="#refs">reference list</a> at the end;
-each entry there says what is taken from the source. Status 7 October 2026. Tap a step to open it.</p>
+<h1>Cerebral microbleed detection on T2*-GRE and SWI: how the pipeline was built</h1>
+<p class="lead">This page tells the story of the pipeline in the order it happened. We started with a clinical question and no method,
+read what the literature offers, put the candidate methods into one arena on the public VALDO data and let a single number, the lesion-level F1, decide.
+The anisotropic 3D U-Net won. With the network fixed, every pre-processing and post-processing idea from the literature was measured on top of it,
+one at a time, and kept only if it scored higher. The chain that came out of VALDO was then carried over to the in-house Charité cohorts (T2* and SWI).
+Superscript numbers point to the <a href="#refs">reference list</a>; each entry there says what was taken from the source. Every measured number links to
+the section of the public lab book that records it (<a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book</a>,
+<a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/OVERVIEW-tests-2026-09-29.md">table of all tests</a>,
+<a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/REPLICATION.md">commands</a>). Statements for which no source exists have been removed.
+Status 7 October 2026.</p>
 <div class="legend">
-  <span><span class="tag kept">kept</span> as in the original (or standard practice); the ablation number is given where one exists</span>
-  <span><span class="tag changed">changed</span> differs from the original: the step states what the original does, what is done here instead, why, and what the paired measurement showed</span>
-  <span><span class="tag removed">removed</span> taken out because it measurably hurt</span>
+  <span><span class="tag tour">chosen in the arena</span> several methods ran under one recipe on the same data; the best stayed</span>
+  <span><span class="tag meas">chosen by paired measurement</span> two or three variants compared on the same cases</span>
+  <span><span class="tag std">standard, ablation measured</span> the usual choice in the field; removing it was measured</span>
   <span><span class="tag nogain">tested, no gain</span> tried; the interval included zero or lay below it</span>
-  <span><span class="tag open">open</span> not measured, or measured only within the noise of a single random seed (about 0.08 F1)</span>
+  <span><span class="tag harm">tested, harmful</span> measurably worse, therefore not used</span>
+  <span><span class="tag open">open</span> not measured, or only within the noise of a single random seed (about 0.08 F1)</span>
 </div>
-<p class="note">Reading rule for every number on this page: a difference is <em>confirmed</em> only if its 95 % interval excludes zero, or if it reproduced with a second random seed.
-Everything else is a direction, not a result. Where a step says "within noise", it stays in the chain only because removing it was not better either.</p>
+<p class="note">Reading rule for every number on this page: all scores are pooled lesion-level F1 on the 57 VALDO cross-validation cases (5 folds, out-of-fold),
+paired against the stated comparison with a 95 % bootstrap interval over cases in brackets. A difference is <em>confirmed</em> only if that interval excludes zero
+or if it reproduced with a second random seed. Everything else is a direction, not a result.</p>
 
-<h2>1&nbsp; The pipeline, step by step</h2>
+<h2>1&nbsp; The question and the data</h2>
+<p>Cerebral microbleeds are small round or ovoid hypointense foci of 2-10 mm in brain parenchyma on T2*-weighted gradient-echo or susceptibility-weighted MRI;
+their mimics are vessel cross-sections, calcification, iron deposits, bone and air<sup class="r"><a href="#r3">3</a></sup>. The clinical cohorts this pipeline is for have
+one such sequence per patient and nothing else: 75 T2* cases with 828 reference microbleeds and 61 SWI cases with 652, read at the Charité. The method therefore had to work from a
+single magnitude image. The current best published result on VALDO uses three sequences<sup class="r"><a href="#r16">16</a></sup>, which rules it out here.</p>
+<p>Development data: VALDO 2021 Task 2<sup class="r"><a href="#r2">2</a></sup>, 72 T2*-GRE cases from three cohorts with 236 annotated microbleeds and very different geometry
+(0.45 x 0.45 x 4 mm, 11 cases; 0.49 x 0.49 x 0.8 mm, 34; 1 x 1 x 3-4 mm, 27). 15 cases were set aside and measured once at the end; the other 57 (139 lesions) carry every decision in
+five stratified folds, where for fold k another fold selects checkpoint and threshold and fold k is only predicted
+<a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/REPLICATION.md">commands 4</a>.</p>
+<p>The yardstick: detection of small, sparse, countable objects is an instance problem, so the metric counts lesions, not voxels<sup class="r"><a href="#r20">20</a></sup>.
+A reference lesion counts as found when a predicted 26-connected component touches it; every component that touches none is a false alarm; F1 is pooled over cases.
+Every comparison is paired over the same cases with a bootstrap<sup class="r"><a href="#r21">21</a></sup> (10 000 draws). One U-Net training scatters by about 0.08 F1 between
+random seeds (three seeds of the identical recipe: 0.646 / 0.590 / 0.578 <a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 5u</a>),
+so decisions below that size need a second seed; with about 60 cases, error bars of this size are expected<sup class="r"><a href="#r46">46</a></sup>.</p>
+
+<h2>2&nbsp; What the literature offers</h2>
+<p class="lead">Before anything was trained, the published methods were sorted by the idea they contribute. Each idea became a contestant in the arena (section 3) or a measured option on the winner (section 4).</p>
+<div class="scroll"><table>
+<tr><th>Family</th><th>Representatives</th><th>Idea taken into the arena</th></tr>
+<tr><td>Two-stage microbleed cascades on the native voxel grid</td><td>Dou et al. 2016<sup class="r"><a href="#r40">40</a></sup>, Al-masni et al. 2020<sup class="r"><a href="#r42">42</a></sup>, MicrobleedNet 2023<sup class="r"><a href="#r1">1</a></sup></td>
+<td>candidate detector plus a yes/no classifier on a cube around each candidate; MicrobleedNet adds vessel inpainting, a radial-symmetry channel, an inverted intensity scale and teacher-student distillation<sup class="r"><a href="#r18">18</a></sup></td></tr>
+<tr><td>Hand-made blob finders</td><td>fast radial symmetry transform<sup class="r"><a href="#r7">7</a></sup>; in 3D with a phase image, Liu et al. 2019<sup class="r"><a href="#r41">41</a></sup></td><td>a map that is bright at the centre of small round blobs and flat on edges and vessels, as an extra input channel</td></tr>
+<tr><td>General segmentation networks</td><td>U-Net<sup class="r"><a href="#r8">8</a></sup>, 3D U-Net<sup class="r"><a href="#r9">9</a></sup>, nnU-Net<sup class="r"><a href="#r6">6</a></sup> (used by the VALDO top teams<sup class="r"><a href="#r2">2</a></sup>), attention U-Net<sup class="r"><a href="#r25">25</a></sup>, UNet++<sup class="r"><a href="#r26">26</a></sup>, SegResNet<sup class="r"><a href="#r27">27</a></sup>, Swin UNETR<sup class="r"><a href="#r28">28</a></sup>, residual and squeeze-and-excitation blocks<sup class="r"><a href="#r30">30</a></sup>, R2U-Net<sup class="r"><a href="#r31">31</a></sup>, MedNeXt<sup class="r"><a href="#r29">29</a></sup>, nnU-Net with residual encoder<sup class="r"><a href="#r32">32</a></sup></td>
+<td>one-stage voxel segmentation; nnU-Net also contributes the rules for a common spacing, in-plane-only pooling on anisotropic data, foreground oversampling and sliding-window inference</td></tr>
+<tr><td>Released microbleed tools</td><td>SHIVA-CMB<sup class="r"><a href="#r43">43</a></sup></td><td>run as released, as an external benchmark</td></tr>
+<tr><td>Box-based detection</td><td>nnDetection<sup class="r"><a href="#r44">44</a></sup></td><td>not run (deferred)</td></tr>
+<tr><td>Loss functions and training tricks for small lesions</td><td>soft Dice<sup class="r"><a href="#r11">11</a></sup>, blob loss<sup class="r"><a href="#r15">15</a></sup>, focal Tversky<sup class="r"><a href="#r33">33</a></sup>, online hard-negative mining<sup class="r"><a href="#r34">34</a></sup>, centre maps and re-weighting towards misses<sup class="r"><a href="#r16">16</a></sup>, synthetic lesions<sup class="r"><a href="#r19">19</a>,<a href="#r16">16</a></sup></td><td>measured one at a time on the winning network (section 4, step 6)</td></tr>
+<tr><td>Image intensity</td><td>FSL FAST bias correction<sup class="r"><a href="#r4">4</a></sup>, N4<sup class="r"><a href="#r22">22</a></sup>, histogram landmark matching<sup class="r"><a href="#r24">24</a></sup>, z-score (nnU-Net default<sup class="r"><a href="#r6">6</a></sup>), inverted maximum scale<sup class="r"><a href="#r1">1</a></sup></td><td>measured (section 4, step 1)</td></tr>
+<tr><td>Anatomy as prior knowledge</td><td>SynthSeg<sup class="r"><a href="#r17">17</a>,<a href="#r37">37</a></sup>; CSF / white-matter mask as location feature, Myung et al. 2021<sup class="r"><a href="#r38">38</a></sup></td><td>a microbleed is parenchymal<sup class="r"><a href="#r3">3</a></sup>: drop components in free cerebrospinal fluid; tissue map as input channels</td></tr>
+<tr><td>False-positive reduction and ensembling</td><td>candidate classifiers after Setio et al.<sup class="r"><a href="#r39">39</a></sup>, random forest and gradient boosting<sup class="r"><a href="#r45">45</a></sup>, deep ensembles<sup class="r"><a href="#r35">35</a></sup>, mirror test-time augmentation<sup class="r"><a href="#r36">36</a></sup></td><td>measured after the network (section 4, steps 7 to 9)</td></tr>
+</table></div>
+<p>Two of these lines developed without reference to each other: the MicrobleedNet paper compares itself with no VALDO team, and no VALDO team used radial symmetry, vessel removal or distillation
+<a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 2a</a>. The arena puts both families on the same data.</p>
+
+<h2>3&nbsp; The arena on VALDO: which network?</h2>
+<h3>Round 1: nine networks, one recipe</h3>
+<p>Every network was trained with the same folds, patches, loss (binary cross-entropy plus soft Dice<sup class="r"><a href="#r11">11</a></sup>), optimiser (AdamW<sup class="r"><a href="#r12">12</a></sup>) and 40 epochs,
+on the inverted, bias-corrected image with the radial-symmetry channel. The difference is paired against the attention U-Net, which runs the MicrobleedNet-style recipe and is the starting score
+<a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 4.4</a>.</p>
+<div class="scroll"><table>
+<tr><th>Network</th><th>Source</th><th class="r">Parameters</th><th class="r">F1</th><th>Paired difference [95 % interval]</th></tr>
+<tr><td><strong>anisotropic 3D U-Net</strong> (first level convolves and pools in-plane only)</td><td>3D U-Net<sup class="r"><a href="#r9">9</a></sup> with the nnU-Net rule for anisotropic grids<sup class="r"><a href="#r6">6</a></sup></td><td class="r">22.5 M</td><td class="r"><span class="num">0.404</span></td><td><span class="num">+0.159 [+0.091; +0.234]</span> confirmed, ahead in all three cohorts</td></tr>
+<tr><td>2.5D U-Net (neighbouring slices as channels)</td><td>U-Net<sup class="r"><a href="#r8">8</a></sup></td><td class="r">7.8 M</td><td class="r"><span class="num">0.294</span></td><td><span class="num">+0.049 [-0.046; +0.141]</span></td></tr>
+<tr><td>plain 3D U-Net, nnU-Net style</td><td>nnU-Net<sup class="r"><a href="#r6">6</a></sup></td><td class="r">16.5 M</td><td class="r"><span class="num">0.265</span></td><td><span class="num">+0.019 [-0.056; +0.098]</span></td></tr>
+<tr><td>UNet++</td><td>Zhou et al.<sup class="r"><a href="#r26">26</a></sup></td><td class="r">7.0 M</td><td class="r"><span class="num">0.255</span></td><td><span class="num">+0.010 [-0.078; +0.099]</span></td></tr>
+<tr><td>attention U-Net (starting point)</td><td>Oktay et al.<sup class="r"><a href="#r25">25</a></sup></td><td class="r">22.7 M</td><td class="r"><span class="num">0.245</span></td><td>reference</td></tr>
+<tr><td>shallow U-Net with dilated convolutions</td><td>U-Net<sup class="r"><a href="#r8">8</a></sup></td><td class="r">3.2 M</td><td class="r"><span class="num">0.176</span></td><td><span class="num">-0.069 [-0.121; -0.008]</span> confirmed worse</td></tr>
+<tr><td>residual U-Net with squeeze-and-excitation</td><td>He et al., Hu et al.<sup class="r"><a href="#r30">30</a></sup></td><td class="r">42.0 M</td><td class="r"><span class="num">0.105</span></td><td><span class="num">-0.140 [-0.195; -0.081]</span> confirmed worse</td></tr>
+<tr><td>SegResNet</td><td>Myronenko<sup class="r"><a href="#r27">27</a></sup></td><td class="r">18.8 M</td><td class="r"><span class="num">0.080</span></td><td><span class="num">-0.165 [-0.212; -0.109]</span> confirmed worse</td></tr>
+<tr><td>Swin UNETR</td><td>Hatamizadeh et al.<sup class="r"><a href="#r28">28</a></sup></td><td class="r">62.2 M</td><td class="r"><span class="num">0.000</span></td><td>did not train under the common recipe (one fold finished, no lesion found)</td></tr>
+</table></div>
+<p>Why the winner wins: at 0.5 x 0.5 x 1 mm most through-plane samples are interpolated copies of their neighbours (slices of 0.8 to 4 mm). Averaging them in the first layer adds no information and halves
+the useful in-plane resolution; convolving in-plane first trusts only the measured direction. Re-measured later with the final recipe on clean data (60 epochs, no vessel inpainting): nnU-Net style 0.458 and attention U-Net 0.463
+against 0.585 for the winner <a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 5s</a>.</p>
+
+<h3>Round 2: challengers against the finished recipe</h3>
+<p>After the training recipe was fixed (section 4, step 6; 60 epochs, cross-selected baseline 0.622 with the CSF rule), newer architectures and every recipe knob were run once more against it on 2 October 2026
+<a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 5ae, arm 9</a>. None of the 21 variants beat the baseline.</p>
+<div class="scroll"><table>
+<tr><th>Variant</th><th>Paired difference [95 % interval]</th><th>Verdict</th></tr>
+<tr><td>MedNeXt<sup class="r"><a href="#r29">29</a></sup></td><td><span class="num">-0.098 [-0.175; -0.018]</span></td><td><span class="tag harm">tested, harmful</span></td></tr>
+<tr><td>nnU-Net with residual encoder<sup class="r"><a href="#r32">32</a></sup></td><td><span class="num">-0.063 [-0.143; -0.002]</span></td><td><span class="tag harm">tested, harmful</span></td></tr>
+<tr><td>R2U-Net, 2.5D<sup class="r"><a href="#r31">31</a></sup></td><td><span class="num">-0.141 [-0.213; -0.067]</span></td><td><span class="tag harm">tested, harmful</span></td></tr>
+<tr><td>winner with attention gates<sup class="r"><a href="#r25">25</a></sup></td><td><span class="num">-0.056 [-0.120; +0.004]</span></td><td><span class="tag nogain">tested, no gain</span> (the gates are not what hurt the first network; the isotropic first level was)</td></tr>
+<tr><td>width 16 / 48 base channels (5.6 M / 50.6 M parameters)</td><td><span class="num">-0.051 [-0.142; +0.041]</span> / <span class="num">-0.112 [-0.212; -0.009]</span></td><td><span class="tag nogain">no gain</span> / <span class="tag harm">harmful</span></td></tr>
+<tr><td>learning rate 1e-3 / 1e-4 (recipe 3e-4)</td><td><span class="num">-0.180 [-0.284; -0.090]</span> / <span class="num">-0.086 [-0.162; -0.012]</span></td><td><span class="tag harm">tested, harmful</span></td></tr>
+<tr><td>weight decay 0 / 1e-3 (recipe 1e-4)</td><td><span class="num">-0.055 [-0.122; +0.013]</span> / <span class="num">-0.002 [-0.048; +0.045]</span></td><td><span class="tag nogain">tested, no gain</span></td></tr>
+<tr><td>batch 2 / 8 (recipe 4)</td><td><span class="num">-0.011 [-0.067; +0.037]</span> (second seed <span class="num">-0.043</span>) / <span class="num">-0.090 [-0.177; +0.003]</span></td><td><span class="tag nogain">tested, no gain</span></td></tr>
+<tr><td>400 / 1600 patches per epoch (recipe 800)</td><td><span class="num">-0.066 [-0.125; -0.005]</span> / <span class="num">-0.012 [-0.065; +0.042]</span> (second seed <span class="num">-0.009</span>)</td><td><span class="tag harm">harmful</span> / <span class="tag nogain">no gain</span></td></tr>
+<tr><td>90 epochs (recipe 60)</td><td><span class="num">-0.016 [-0.091; +0.060]</span></td><td><span class="tag nogain">tested, no gain</span></td></tr>
+<tr><td>40 % / 80 % lesion-centred patches (recipe 60 %)</td><td><span class="num">-0.459 [-0.535; -0.349]</span> / <span class="num">+0.012 [-0.042; +0.067]</span></td><td><span class="tag harm">harmful</span> / <span class="tag nogain">no gain</span></td></tr>
+<tr><td>focal Tversky loss<sup class="r"><a href="#r33">33</a></sup></td><td><span class="num">-0.355 [-0.447; -0.242]</span></td><td><span class="tag harm">tested, harmful</span></td></tr>
+<tr><td>loss without deep supervision</td><td><span class="num">0.000 [0; 0]</span>, identical to the baseline</td><td><span class="tag open">open</span>: the switch is suspected to be inactive, under review</td></tr>
+<tr><td>nnU-Net v2 as a complete pipeline<sup class="r"><a href="#r6">6</a></sup></td><td>five folds trained, not yet predicted</td><td><span class="tag open">open</span></td></tr>
+</table></div>
+
+<h3>Complete published pipelines, run as they are</h3>
+<div class="scroll"><table>
+<tr><th>Pipeline</th><th>How it was run</th><th>Lesion F1</th><th>Source</th></tr>
+<tr><td>SHIVA-CMB<sup class="r"><a href="#r43">43</a></sup>, a 3D U-Net ensemble trained on many cohorts and both sequences</td><td>unchanged, with the released weights</td><td>VALDO <span class="num">0.575</span>, but it was trained on 60 of the 72 VALDO cases, so this is not an independent test; in-house T2* <span class="num">0.312</span></td><td><a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 5a</a></td></tr>
+<tr><td>MicrobleedNet<sup class="r"><a href="#r1">1</a></sup>, two stages with its own preprocessing (vessel inpainting, radial symmetry)</td><td>original code (commit 958f1cb), pre-trained weights, all layers fine-tuned on our folds</td><td>VALDO <span class="num">0.040</span>; in-house SWI <span class="num">0.406</span>, T2* <span class="num">0.277</span>; its second stage did not learn on these data (validation accuracy at chance)</td><td><a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 5ae, arm 6</a></td></tr>
+<tr><td>VALDO challenge teams<sup class="r"><a href="#r2">2</a></sup></td><td>not run here; scores from the challenge report on its hidden test set</td><td><span class="num">0.667-0.684</span> median F1 per subject (challenge rule)</td><td>Sudre et al.<sup class="r"><a href="#r2">2</a></sup></td></tr>
+<tr><td>CenSynCMB<sup class="r"><a href="#r16">16</a></sup>, three input sequences</td><td>not run (needs T1 and T2); its two training ideas were measured in step 6</td><td><span class="num">0.743</span> per-subject mean, cross-validation</td><td>He et al.<sup class="r"><a href="#r16">16</a></sup></td></tr>
+</table></div>
+
+<h2>4&nbsp; With the network fixed: every step of the chain, measured on top of it</h2>
+<p class="lead">Each step lists the <strong>methods available</strong> (with their source), <strong>how the choice was made</strong>, <strong>what is used</strong>, and <strong>what the measurement showed</strong>. Tap a step to open it.</p>
 <div class="flow">
 
-<details class="step" data-s="io" open><summary><span class="n">0</span><span class="t">Input: one T2*-weighted gradient-echo volume, as delivered</span><span class="shape">e.g. 512 x 512 x 35, 0.45 x 0.45 x 4 mm</span></summary>
-<div>VALDO Task 2<sup class="r"><a href="#r2">2</a></sup> contains three cohorts with very different geometry: 0.45 x 0.45 x 4 mm (11 cases), 0.49 x 0.49 x 0.8 mm (34) and 1 x 1 x 3-4 mm (27);
-72 cases, 236 annotated microbleeds. Microbleeds are small round hypointense foci of 2-10 mm<sup class="r"><a href="#r3">3</a></sup>. No other sequence is used: the target cohorts only have T2* or SWI.
-<ul><li><strong>Brain mask: the one that comes with the data.</strong> VALDO ships non-brain voxels set to zero. Only one cohort is really skull-stripped: 4 % / 16 % / 40 % of the delivered mask lies outside the brain
-(eyes, skull base, scalp). The mask used here is <code>image &gt; 0</code> with holes filled, because a very dark voxel inside the brain can be exactly zero and would otherwise drop out.
-No microbleed is cut off by the delivered mask.</li>
-<li><span class="tag nogain">tested, no gain</span> a tight brain mask from SynthSeg as network input: <span class="num">-0.048 [-0.099; +0.009]</span>. Masking is therefore not a step of this pipeline.</li></ul></div></details>
-<div class="arrow">&#8595;</div>
-
-<details class="step" data-s="kept"><summary><span class="n">1</span><span class="t">Intensity: bias-field correction, then the original's inverted scale</span> <span class="tag kept">kept</span><span class="shape">FSL FAST -B &#8594; 1 - I / max(I)</span></summary>
-<div>
-<dl>
-<dt>Original</dt><dd>Inverts the image inside the mask, <code>1 - I / max(I)</code>, so that microbleeds become the brightest objects<sup class="r"><a href="#r1">1</a></sup>. Nothing else.</dd>
-<dt>Here</dt><dd>The same inversion, applied to the output of FSL FAST with the <code>-B</code> option<sup class="r"><a href="#r4">4</a></sup>, which estimates a smooth multiplicative brightness field across the head and divides it out.</dd>
-<dt>Why</dt><dd>Scaling by the maximum is sensitive to where the brightest voxel sits; a slow brightness drift moves it. The correction was in place before the first measurement and the chain was built on it.</dd>
-<dt>Measured</dt><dd>Training without the bias-field correction: <span class="num">-0.022 [-0.097; +0.052]</span>. <span class="tag open">open</span> within noise -- it is not shown to matter, and a future version may drop it.</dd>
-</dl>
-<ul><li><span class="tag nogain">tested, no gain</span> z-score normalisation plus rotation / scaling / noise augmentation: <span class="num">-0.060</span>; scaling by the 99.5th percentile instead of the maximum: <span class="num">+0.025</span> with an interval that includes zero;
-histogram landmark matching across cohorts: <span class="num">0.549</span> against <span class="num">0.646</span>. All affine intensity scales are equivalent here; the intensity path is closed.</li></ul></div></details>
-<div class="arrow">&#8595;</div>
-
-<details class="step" data-s="removed"><summary><span class="n">2</span><span class="t">Vessel inpainting of the original pipeline</span> <span class="tag removed">removed</span><span class="shape">Frangi + k-means per slice</span></summary>
-<div>
-<dl>
-<dt>Original</dt><dd>Before the network sees the image, everything a vesselness filter<sup class="r"><a href="#r5">5</a></sup> finds is painted over with surrounding intensities, slice by slice; blobs that look round and solid are rescued<sup class="r"><a href="#r1">1</a></sup>.
-The authors name the risk themselves: on thick slices a microbleed often does not look round and solid in 2D. Their pipeline was developed mainly on thin-slice SWI.</dd>
-<dt>Here</dt><dd>No inpainting. The network sees the bias-corrected, inverted image.</dd>
-<dt>Why</dt><dd>Audit against the labels: the inpainting touches 109 of 236 microbleeds, paints 27 over completely, leaves 17 invisible, and repaints 12-17 % of the brain. A step that deletes the target cannot be repaired by the network.</dd>
-<dt>Measured</dt><dd>Training without it: 0.470 &#8594; 0.588, paired <span class="num">+0.136 [+0.065; +0.226]</span> -- the largest single gain of the project.</dd>
-</dl>
-<ul><li><span class="tag nogain">tested, no gain</span> a repaired, label-free inpainting (scales in mm, one threshold per volume, only long thin structures) in three doses: 0.588 / 0.584 / 0.570.</li></ul></div></details>
-<div class="arrow">&#8595;</div>
-
-<details class="step" data-s="changed"><summary><span class="n">3</span><span class="t">One physical grid for every case, cropped to the brain</span> <span class="tag changed">changed</span><span class="shape">0.5 x 0.5 x 1.0 mm</span></summary>
-<div>
-<dl>
-<dt>Original</dt><dd>Works on the native voxel grid with 48-voxel cubes<sup class="r"><a href="#r1">1</a></sup>; on the 4 mm cohort such a cube is 22 mm wide but 190 mm tall.</dd>
-<dt>Here</dt><dd>Every case is resampled to 0.5 x 0.5 x 1.0 mm (image linear, label nearest neighbour; the centre of the field of view is preserved, which fixed a half-voxel shift of an earlier version) and cropped to the bounding box of the brain.</dd>
-<dt>Why</dt><dd>A convolution kernel should mean the same millimetres in every case; with slices from 0.8 to 4 mm it does not on the native grid. This is the same argument nnU-Net makes for a common target spacing<sup class="r"><a href="#r6">6</a></sup>.
-The price is contrast: lesion volume survives the interpolation (-1 / 0 / 0 % per cohort), lesion peak contrast does not (-26 / -15 / -30 %), because the objects are only a few voxels wide.</dd>
-<dt>Measured</dt><dd>A coarser grid in z (2 mm): <span class="num">-0.036 [-0.105; +0.032]</span>; cubic instead of linear interpolation: <span class="num">-0.024</span> (two seeds). Neither direction is confirmed; the 1 mm grid stays as the middle.</dd>
+<details class="step" data-s="io" open><summary><span class="n">0</span><span class="t">Input: one T2* or SWI volume and a brain mask</span><span class="shape">e.g. 512 x 512 x 35, 0.45 x 0.45 x 4 mm</span></summary>
+<div><dl>
+<dt>Methods available</dt><dd>the mask delivered with the data; a learned skull-stripper, HD-BET<sup class="r"><a href="#r23">23</a></sup>; a tight mask from a tissue segmentation, SynthSeg<sup class="r"><a href="#r17">17</a></sup>.</dd>
+<dt>How chosen</dt><dd>VALDO ships non-brain voxels set to zero, so the delivered mask is <code>image &gt; 0</code> with holes filled. Only one VALDO cohort is really skull-stripped: 4 % / 16 % / 40 % of the delivered mask lies outside the brain, and no microbleed is cut off by it <a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 4.2</a>. The tight SynthSeg mask as network input was measured against it.</dd>
+<dt>Used</dt><dd>the delivered mask; HD-BET only for in-house cases that come without one.</dd>
+<dt>Measured</dt><dd><span class="tag nogain">tested, no gain</span> tight brain mask as input: <span class="num">-0.048 [-0.099; +0.009]</span> <a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 4.2</a>.</dd>
 </dl></div></details>
 <div class="arrow">&#8595;</div>
 
-<details class="step" data-s="kept"><summary><span class="n">4</span><span class="t">Second input channel: fast radial symmetry (FRST)</span> <span class="tag kept">kept, re-implemented</span><span class="shape">2D per slice, radii 2 / 3 / 4 / 6 voxels = 1-3 mm</span></summary>
-<div>
-<dl>
-<dt>Source</dt><dd>Loy &amp; Zelinsky<sup class="r"><a href="#r7">7</a></sup>: every pixel votes along its gradient direction at a distance r; votes accumulate at the centres of small round blobs, so the map peaks on microbleeds and stays flat on edges and long vessels. The original uses this map as a second channel next to the image<sup class="r"><a href="#r1">1</a></sup>.</dd>
-<dt>Here</dt><dd>Re-implemented in floating point with four radii in millimetres and one fixed scale for the whole volume. In the public reference code (commit 958f1cb) gradients are cast to integers, directions are rounded by integer division, every slice is normalised by its own maximum (noise becomes signal in slices without a lesion), and two radii are used where the paper describes four.</dd>
-<dt>Measured</dt><dd>The map peaks inside 96 % of the microbleeds (82 % when the original inpainting runs first). Training on T2* alone, without the channel: <span class="num">-0.053 [-0.116; +0.004]</span>, lower in all five folds -- a consistent direction whose interval just touches zero.</dd>
+<details class="step" data-s="std"><summary><span class="n">1</span><span class="t">Intensity: bias-field correction, then an inverted scale</span> <span class="tag std">standard, ablation measured</span><span class="shape">FSL FAST -B &#8594; 1 - I / max(I)</span></summary>
+<div><dl>
+<dt>Methods available</dt><dd>(a) Correct the slow brightness drift across the head or not: FSL FAST with <code>-B</code><sup class="r"><a href="#r4">4</a></sup> estimates the field inside a tissue segmentation; N4<sup class="r"><a href="#r22">22</a></sup> estimates it from the histogram alone.
+(b) One intensity scale for every case: divide by the maximum and invert so that microbleeds become the brightest objects<sup class="r"><a href="#r1">1</a></sup>; z-score per case<sup class="r"><a href="#r6">6</a></sup>; a high percentile instead of the maximum; histogram landmark matching across cohorts<sup class="r"><a href="#r24">24</a></sup>.</dd>
+<dt>How chosen</dt><dd>The bias correction was in place before the first training because a maximum-based scale is sensitive to where the brightest voxel sits; its removal was then measured. The four scales were measured against each other with everything else fixed.</dd>
+<dt>Used</dt><dd>FSL FAST <code>-B</code> once per case, then <code>1 - I / max(I)</code> inside the mask.</dd>
+<dt>Measured</dt><dd>Without the bias correction: <span class="num">-0.022 [-0.097; +0.052]</span> <span class="tag open">open</span>, within noise; it stays because removing it was not better <a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 4.9</a>. N4 was not measured.
+<span class="tag nogain">tested, no gain</span> z-score: <span class="num">-0.005</span>; 99.5th percentile instead of the maximum: <span class="num">+0.025</span>, interval over zero;
+<span class="tag harm">tested, harmful</span> landmark matching: <span class="num">-0.064</span> on VALDO and <span class="num">-0.048 / -0.034</span> confirmed when transferring to the in-house cohorts <a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 5ac</a>.</dd>
 </dl></div></details>
 <div class="arrow">&#8595;</div>
 
-<details class="step" data-s="changed"><summary><span class="n">5</span><span class="t">Network: anisotropic 3D U-Net</span> <span class="tag changed">changed</span><span class="shape">22.5 M parameters</span></summary>
-<div>
-<dl>
-<dt>Original</dt><dd>A 3D U-Net-like encoder-decoder on 48-voxel cubes as candidate detector<sup class="r"><a href="#r1">1</a></sup>; the first re-implementation here used a 3D attention U-Net with the original recipe and reached F1 0.245.</dd>
-<dt>Here</dt><dd>A 3D U-Net<sup class="r"><a href="#r8">8</a>,<a href="#r9">9</a></sup> whose first level convolves (1 x 3 x 3) and pools (1 x 2 x 2) in-plane only; from the next level on the grid is 1 mm isotropic and the network is an ordinary 3D U-Net
-(32 base channels, four poolings, InstanceNorm<sup class="r"><a href="#r10">10</a></sup>, LeakyReLU, transposed convolutions, one sigmoid output). Diagram in section 2.</dd>
-<dt>Why</dt><dd>At 0.5 x 0.5 x 1 mm most through-plane samples are interpolated copies of their neighbours; averaging them in the first layer adds no information and halves the useful in-plane resolution. nnU-Net applies the same rule to anisotropic data<sup class="r"><a href="#r6">6</a></sup>.</dd>
-<dt>Measured</dt><dd>Winner of a tournament of nine single-stage networks under one recipe (attention U-Net, nnU-Net-style, 2.5D, residual-SE, U-Net++, shallow-dilated, Swin UNETR, SegResNet):
-0.245 &#8594; 0.404 against the attention U-Net, paired <span class="num">+0.159 [+0.091; +0.234]</span>, ahead in all three cohorts.
-A second tournament at 60 epochs (2 October 2026) confirmed it: MedNeXt <span class="num">-0.098 [-0.175; -0.018]</span>, nnU-Net residual encoder <span class="num">-0.063 [-0.143; -0.002]</span>, R2U-Net 2.5D <span class="num">-0.141 [-0.213; -0.067]</span>, width 16 / 48 channels <span class="num">-0.051 / -0.112</span>.</dd>
-</dl>
-<ul><li><span class="tag nogain">tested, no gain</span> attention gates on the winner: <span class="num">-0.056 [-0.120; +0.004]</span> -- the gates are not what hurt the first network, the isotropic first level was.</li>
-<li><span class="tag nogain">tested, no gain</span> a SynthSeg tissue map as five extra input channels: the network learns the CSF rule of step 8 by itself but makes more false alarms elsewhere, <span class="num">-0.058</span>.</li></ul></div></details>
+<details class="step" data-s="meas"><summary><span class="n">2</span><span class="t">Vessels before the network: paint them out, or leave the image alone</span> <span class="tag meas">chosen by paired measurement</span><span class="shape">nothing is painted over</span></summary>
+<div><dl>
+<dt>Methods available</dt><dd>Leave the image as it is. Or remove vessels first, as MicrobleedNet does<sup class="r"><a href="#r1">1</a></sup>: a vesselness filter<sup class="r"><a href="#r5">5</a></sup> plus k-means per slice, painted over with surrounding intensities, rescuing blobs that look round and solid in 2D. A gentler, label-free variant was built here (scales in millimetres, one threshold per volume, only long thin structures).</dd>
+<dt>How chosen</dt><dd>Audit of the inpainting against the reference labels, then a paired training with and without it, then the gentle variant in three doses.</dd>
+<dt>Used</dt><dd>Nothing is painted over.</dd>
+<dt>Measured</dt><dd>The original inpainting touches 109 of the 236 VALDO microbleeds, paints 27 over completely, leaves 17 invisible and repaints 12-17 % of the brain. Training without it: 0.470 &#8594; 0.588, paired <span class="num">+0.136 [+0.065; +0.226]</span>, the largest single gain of the project
+<a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 4.1</a>.
+<span class="tag nogain">tested, no gain</span> the gentle variant in three doses: 0.588 / 0.584 / 0.570. The authors of the original name this risk themselves<sup class="r"><a href="#r1">1</a></sup>.</dd>
+</dl></div></details>
 <div class="arrow">&#8595;</div>
 
-<details class="step" data-s="changed"><summary><span class="n">6</span><span class="t">Training recipe: patches, loss, optimiser, schedule</span> <span class="tag changed">changed</span><span class="shape">800 patches / epoch, 60 epochs</span></summary>
-<div>
-<dl>
-<dt>Original</dt><dd>Non-overlapping 48-voxel cubes, lesion and non-lesion cubes balanced 1:1, lesion voxels weighted ten-fold in the loss, up to 100 epochs with early stopping on a validation split<sup class="r"><a href="#r1">1</a></sup>.</dd>
-<dt>Here</dt><dd>800 random patches of 2 x 38 x 62 x 94 voxels (38 x 31 x 47 mm) per epoch, batch 4: 60 % centred on a microbleed at a random offset (each lesion equally likely, so large ones do not dominate), 25 % random brain, 15 % anywhere; random flips along all axes.
-Loss 0.5 binary cross-entropy + 0.5 soft Dice<sup class="r"><a href="#r11">11</a></sup>, no voxel weights. AdamW, learning rate 3e-4, weight decay 1e-4<sup class="r"><a href="#r12">12</a></sup>; cosine decay to zero over a fixed 60 epochs<sup class="r"><a href="#r13">13</a></sup>; bfloat16 mixed precision<sup class="r"><a href="#r14">14</a></sup>.
-The checkpoint used for prediction is the one with the best lesion F1 on the inner fold, checked every 5 epochs.</dd>
-<dt>Why</dt><dd>Two things keep this recipe stable. The lesion share: with 33 % lesion patches (the nnU-Net default is a third<sup class="r"><a href="#r6">6</a></sup>) training collapsed to "predict nothing", because the smoothed Dice term rewards an empty output on empty patches.
-The fixed length: with early stopping the result depended on the random seed by about 0.08 F1; the fixed schedule took 0.404 &#8594; 0.470.</dd>
-<dt>Measured</dt><dd>Everything below was tried against this recipe and did not raise F1:</dd>
+<details class="step" data-s="meas"><summary><span class="n">3</span><span class="t">One physical grid for every case, cropped to the brain</span> <span class="tag meas">chosen by paired measurement</span><span class="shape">0.5 x 0.5 x 1.0 mm</span></summary>
+<div><dl>
+<dt>Methods available</dt><dd>The native voxel grid of each scan, as MicrobleedNet<sup class="r"><a href="#r1">1</a></sup> and Dou et al.<sup class="r"><a href="#r40">40</a></sup> use; on the 4 mm cohort a 48-voxel cube is then 22 mm wide but 190 mm tall. Or one common spacing for all cases, the nnU-Net rule<sup class="r"><a href="#r6">6</a></sup>; within that, the through-plane spacing (1 or 2 mm) and the interpolation (linear or cubic).</dd>
+<dt>How chosen</dt><dd>A convolution kernel should mean the same millimetres in every case. Spacing and interpolation were measured as paired variants.</dd>
+<dt>Used</dt><dd>0.5 x 0.5 x 1.0 mm for every case (image linear, label nearest neighbour, centre of the field of view preserved), cropped to the bounding box of the brain.</dd>
+<dt>Measured</dt><dd>The price is contrast: lesion volume survives the interpolation (-1 / 0 / 0 % per cohort), lesion peak contrast does not (-26 / -15 / -30 %) <a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 4.8</a>.
+<span class="tag nogain">tested, no gain</span> 2 mm in z: <span class="num">-0.036 [-0.105; +0.032]</span>; cubic instead of linear interpolation: <span class="num">-0.024</span> (two seeds) <a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 5ae, arm 2</a>.</dd>
+</dl></div></details>
+<div class="arrow">&#8595;</div>
+
+<details class="step" data-s="meas"><summary><span class="n">4</span><span class="t">Second input channel: fast radial symmetry (FRST)</span> <span class="tag meas">chosen by paired measurement</span><span class="shape">2D per slice, radii 1-3 mm</span></summary>
+<div><dl>
+<dt>Methods available</dt><dd>The image alone. Or a hand-made blob map as a second channel: the fast radial symmetry transform<sup class="r"><a href="#r7">7</a></sup>, in which every pixel votes along its gradient direction at a distance r, so votes pile up at the centres of small round blobs; used for microbleeds by MicrobleedNet<sup class="r"><a href="#r1">1</a></sup> and, in 3D, by Liu et al.<sup class="r"><a href="#r41">41</a></sup>. Or a tissue map as extra channels<sup class="r"><a href="#r17">17</a></sup>. A phase image would help to separate blood from calcium<sup class="r"><a href="#r41">41</a></sup>; the target cohorts do not have one.</dd>
+<dt>How chosen</dt><dd>Hit rate of the map inside the reference microbleeds, then a paired training with and without the channel; the tissue-map channels measured the same way.</dd>
+<dt>Used</dt><dd>FRST, re-implemented in floating point with four radii in millimetres (2 / 3 / 4 / 6 voxels on the grid) and one fixed scale per volume. The public MicrobleedNet code (958f1cb) uses integer arithmetic, a per-slice maximum and two radii where the paper describes four <a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/DEVIATIONS-microbleednet.md">deviations, row FRST</a>.</dd>
+<dt>Measured</dt><dd>The map peaks inside 96 % of the microbleeds (82 % when the original inpainting runs first). Training without the channel: <span class="num">-0.053 [-0.116; +0.004]</span>, lower in all five folds <a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 4.11</a>.
+<span class="tag nogain">tested, no gain</span> tissue map as five extra input channels: <span class="num">-0.058</span> <a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 5m</a>.</dd>
+</dl></div></details>
+<div class="arrow">&#8595;</div>
+
+<details class="step" data-s="tour"><summary><span class="n">5</span><span class="t">Network: anisotropic 3D U-Net</span> <span class="tag tour">chosen in the arena</span><span class="shape">22.5 M parameters</span></summary>
+<div><dl>
+<dt>Chosen in</dt><dd>section 3: <span class="num">+0.159 [+0.091; +0.234]</span> over the attention U-Net in round 1; every challenger of round 2 lower.</dd>
+<dt>Used</dt><dd>32 base channels, four poolings, InstanceNorm<sup class="r"><a href="#r10">10</a></sup>, LeakyReLU, transposed convolutions, one sigmoid output; the first level convolves (1 x 3 x 3) and pools (1 x 2 x 2) in-plane only, from the second level on the grid is 1 mm isotropic and the network is an ordinary 3D U-Net<sup class="r"><a href="#r9">9</a></sup>. Diagram in section 7.</dd>
+</dl></div></details>
+<div class="arrow">&#8595;</div>
+
+<details class="step" data-s="meas"><summary><span class="n">6</span><span class="t">Training recipe: patches, loss, optimiser, schedule</span> <span class="tag meas">chosen by paired measurement</span><span class="shape">800 patches / epoch, 60 epochs</span></summary>
+<div><dl>
+<dt>Methods available</dt><dd><strong>Class imbalance:</strong> oversample lesion patches, a third as in nnU-Net<sup class="r"><a href="#r6">6</a></sup>, half plus ten-fold voxel weights as in MicrobleedNet<sup class="r"><a href="#r1">1</a></sup>, or more.
+<strong>Loss:</strong> binary cross-entropy plus soft Dice<sup class="r"><a href="#r11">11</a></sup>; focal Tversky<sup class="r"><a href="#r33">33</a></sup>; blob loss, a Dice term per lesion<sup class="r"><a href="#r15">15</a></sup>; a centre-map head and re-weighting towards missed lesions<sup class="r"><a href="#r16">16</a></sup>; online hard-negative mining<sup class="r"><a href="#r34">34</a></sup>.
+<strong>Optimiser and schedule:</strong> AdamW<sup class="r"><a href="#r12">12</a></sup> with a cosine schedule<sup class="r"><a href="#r13">13</a></sup>; early stopping or a fixed length. <strong>Augmentation:</strong> flips; intensity (gamma, bias, contrast, noise); simulated thick slices; rotation and scaling. <strong>Synthetic lesions</strong><sup class="r"><a href="#r19">19</a>,<a href="#r16">16</a></sup>. <strong>Precision:</strong> mixed precision<sup class="r"><a href="#r14">14</a></sup>.</dd>
+<dt>How chosen</dt><dd>One variable at a time against the current recipe, paired on the same cases; a result below the seed noise of 0.08 needs a second seed; expectation and decision rule written down before each run.</dd>
+<dt>Used</dt><dd>800 random patches of 2 x 38 x 62 x 94 voxels (38 x 31 x 47 mm) per epoch, batch 4: 60 % centred on a microbleed at a random offset (each lesion equally likely), 25 % random brain, 15 % anywhere; random flips as the only augmentation.
+Loss 0.5 binary cross-entropy + 0.5 soft Dice with deep supervision, no voxel weights. AdamW, learning rate 3e-4, weight decay 1e-4, cosine decay over a fixed 60 epochs, bfloat16. The checkpoint used for prediction is the one with the best lesion F1 on the inner fold.</dd>
+<dt>Measured</dt><dd>Two choices carry the recipe. The lesion share: with 33 % lesion patches training collapsed to an empty prediction, because the smoothed Dice term rewards an empty output on empty patches <a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 5g</a>. The fixed length: with early stopping one fold stopped at epoch 5; the fixed schedule took 0.404 &#8594; 0.470 <a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 4.5</a>. Everything below was measured against this recipe and did not raise F1:</dd>
 </dl>
 <ul>
-<li><span class="tag nogain">tested, no gain</span> <strong>blob loss</strong><sup class="r"><a href="#r15">15</a></sup> (a Dice term computed per connected lesion instead of over the whole patch, so small lesions count as much as large ones; here with the paper's weighting alpha = 2, beta = 1, 26-connected components):
-sensitivity for small lesions 0.52 &#8594; 0.64, but more false alarms, F1 <span class="num">-0.044</span> (second seed <span class="num">-0.063</span>).</li>
-<li><span class="tag nogain">tested, no gain</span> auxiliary centre-map head and false-negative re-weighting after CenSynCMB<sup class="r"><a href="#r16">16</a></sup>: small lesions 0.52 &#8594; 0.66, F1 <span class="num">-0.054 [-0.110; -0.006]</span>; re-weighting alone <span class="num">-0.030</span>.</li>
-<li><span class="tag nogain">tested, no gain</span> online hard-negative mining: <span class="num">&#177;0.000</span>; 90 or 120 epochs: <span class="num">-0.016 / -0.022</span>; patches of 24 mm or 48 mm: <span class="num">-0.216 / -0.037</span>;
-focal Tversky loss: <span class="num">-0.355</span>; learning rate 1e-3 or 1e-4: <span class="num">-0.180 / -0.086</span>; batch 2 or 8, weight decay 0 or 1e-3, 400 or 1600 patches: all within <span class="num">&#177;0.09</span> with intervals over zero;
-last checkpoint instead of the best inner-fold checkpoint: <span class="num">-0.023 [-0.069; +0.012]</span>.</li>
-<li>Common pattern: everything that makes the network more sensitive is paid for with false alarms. The bottleneck is telling microbleeds from mimics (vessel cross-sections, calcification) with a single magnitude sequence.</li>
+<li><span class="tag nogain">tested, no gain</span> blob loss<sup class="r"><a href="#r15">15</a></sup>: sensitivity for small lesions 0.52 &#8594; 0.64, but more false alarms, <span class="num">-0.044</span> (second seed <span class="num">-0.063</span>) <a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 5j</a>.</li>
+<li><span class="tag harm">tested, harmful</span> centre-map head<sup class="r"><a href="#r16">16</a></sup>: small lesions 0.52 &#8594; 0.66, F1 <span class="num">-0.054 [-0.110; -0.006]</span> <a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 5k</a>; <span class="tag nogain">no gain</span> re-weighting towards misses <span class="num">-0.030</span>, hard-negative mining <span class="num">&#177;0.000</span> <a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 5l</a>.</li>
+<li><span class="tag harm">tested, harmful</span> intensity augmentation: <span class="num">-0.108 [-0.180; -0.030]</span>; simulated thick slices: <span class="num">-0.127 [-0.179; -0.075]</span> <a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 5p</a>; rotation, scaling, contrast and noise together with z-scoring: <span class="num">-0.060 [-0.135; +0.011]</span> <a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 4.7</a>.</li>
+<li><span class="tag harm">tested, harmful</span> synthetic microbleeds and mimics in two versions: <span class="num">-0.130</span> and <span class="num">-0.072</span>, both confirmed <a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 5ae, arm 1</a>.</li>
+<li><span class="tag harm">tested, harmful</span> patches of 24 mm as in MicrobleedNet: <span class="num">-0.216 [-0.277; -0.156]</span>; <span class="tag nogain">no gain</span> 48 mm cubes: <span class="num">-0.016 [-0.074; +0.034]</span> <a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 5t</a>.</li>
+<li><span class="tag nogain">tested, no gain</span> 120 epochs: <span class="num">-0.029</span> on VALDO, <span class="num">-0.022</span> confirmed on the in-house T2* cohort <a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 5h</a>; last checkpoint instead of the best inner-fold checkpoint: mean 0.618 &#8594; 0.604 <a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 5o</a>; learning rate, weight decay, batch, patches per epoch, 90 epochs: section 3, round 2.</li>
+<li>Common pattern: everything that makes the network more sensitive is paid for with false alarms. The bottleneck is telling microbleeds from mimics with a single magnitude sequence.</li>
 </ul></div></details>
 <div class="arrow">&#8595;</div>
 
-<details class="step" data-s="kept"><summary><span class="n">7</span><span class="t">Inference: sliding window, mean of two seeds</span> <span class="tag kept">kept</span><span class="shape">probability map, same grid</span></summary>
-<div>Windows of the training size slide over the whole volume with half-window stride; overlapping predictions are averaged, windows outside the brain are skipped; the sigmoid gives a probability per voxel<sup class="r"><a href="#r6">6</a></sup>.
-The final map is the mean of two networks trained with different random seeds.
-<ul><li>Measured: the mean of two seeds is as good as the better member and +0.02 to +0.04 above an average member (0.647 against 0.646 / 0.590); three members 0.648, five 0.630 -- no further gain from more members.</li>
-<li><span class="tag nogain">tested, no gain</span> mirror test-time augmentation (8 views): <span class="num">+0.019 [-0.017; +0.058]</span>; not used.</li></ul></div></details>
-<div class="arrow">&#8595;</div>
-
-<details class="step" data-s="changed"><summary><span class="n">8</span><span class="t">Post-processing: one fixed operating point and an anatomical rule</span> <span class="tag changed">changed</span><span class="shape">p &gt; 0.3 &#8594; components &#8594; size &#8594; CSF rule</span></summary>
-<div>
-<dl>
-<dt>Original</dt><dd>Candidates are filtered by volume, ellipticity and distance to the brain-mask border, with thresholds chosen per dataset<sup class="r"><a href="#r1">1</a></sup>.</dd>
-<dt>Here</dt><dd>One setting for every run: threshold 0.3; 26-connected components; drop components smaller than 2 mm&#179; (8 voxels) or larger than 2100 voxels (a 10 mm sphere);
-CSF rule: drop a component whose majority tissue label in a SynthSeg segmentation<sup class="r"><a href="#r17">17</a></sup> of the same case is ventricle or extracerebral CSF.</dd>
-<dt>Why</dt><dd>98 of 176 false alarms lay in free cerebrospinal fluid, where a microbleed cannot be (it is a parenchymal lesion<sup class="r"><a href="#r3">3</a></sup>). The rule has no tunable parameter and removes no true lesion.
-A fixed operating point, rather than one re-tuned per model, keeps the comparisons on this page honest: re-tuning threshold and size per model on 57 cases moves the score by 0.02-0.05.</dd>
-<dt>Measured</dt><dd>0.585 &#8594; 0.646 at the fixed operating point, 0 of 139 lesions lost. Cross-selected (threshold chosen on the other folds) the chain scores 0.622.</dd>
+<details class="step" data-s="std"><summary><span class="n">7</span><span class="t">Inference: sliding window, mean of two seeds</span> <span class="tag std">standard, ablation measured</span><span class="shape">probability map, same grid</span></summary>
+<div><dl>
+<dt>Methods available</dt><dd>One network; the mean of several networks trained with different seeds<sup class="r"><a href="#r35">35</a></sup>; mirror test-time augmentation<sup class="r"><a href="#r36">36</a></sup>; sliding-window prediction with overlap<sup class="r"><a href="#r6">6</a></sup>.</dd>
+<dt>How chosen</dt><dd>Ensembles of one to five members and the mirrored prediction were measured against the single network.</dd>
+<dt>Used</dt><dd>Windows of the training size with half-window stride, overlapping predictions averaged, windows outside the brain skipped; the final map is the mean of two networks with different seeds.</dd>
+<dt>Measured</dt><dd>Two seeds are as good as the better member and +0.02 to +0.04 above an average member (0.647 against 0.646 / 0.590); three members 0.648, five 0.630 <a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 5u</a>.
+<span class="tag nogain">tested, no gain</span> mirror test-time augmentation (8 views): <span class="num">+0.019 [-0.017; +0.058]</span> on VALDO, <span class="num">-0.002</span> on in-house T2* <a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 5e</a>.</dd>
 </dl></div></details>
 <div class="arrow">&#8595;</div>
 
-<details class="step" data-s="io"><summary><span class="n">9</span><span class="t">Output</span><span class="shape">mask + list of lesions</span></summary>
-<div>A binary microbleed mask on the training grid, the number of lesions, and for each lesion its size and location (lobar / deep / infratentorial, from the SynthSeg map);
-optionally a combined map of grey matter, white matter, CSF and microbleeds. The quality-control pages of this site show reference and prediction side by side for every case.</div></details>
+<details class="step" data-s="meas"><summary><span class="n">8</span><span class="t">Post-processing: one fixed operating point and an anatomical rule</span> <span class="tag meas">chosen by paired measurement</span><span class="shape">p &gt; 0.3 &#8594; components &#8594; size &#8594; CSF rule</span></summary>
+<div><dl>
+<dt>Methods available</dt><dd>Threshold and connected components; filters by size, shape and distance to the mask border with thresholds tuned per dataset<sup class="r"><a href="#r1">1</a></sup>; anatomy: a microbleed is parenchymal<sup class="r"><a href="#r3">3</a></sup>, so a component in free cerebrospinal fluid can be dropped, with the CSF taken from SynthSeg<sup class="r"><a href="#r17">17</a>,<a href="#r37">37</a></sup> (a CSF / white-matter mask as location feature is also used by Myung et al.<sup class="r"><a href="#r38">38</a></sup>); or hand the candidates to a learned second stage (step 9).</dd>
+<dt>How chosen</dt><dd>Threshold and size were chosen once on the inner folds and then frozen for every model; re-tuning them per model on 57 cases moves the score by 0.02-0.05 and would make the comparisons on this page dishonest. The CSF rule was audited against the reference labels before it was switched on.</dd>
+<dt>Used</dt><dd>Threshold 0.3; 26-connected components; drop components smaller than 2 mm&#179; or larger than 2100 voxels (a 10 mm sphere); drop a component whose majority tissue label is ventricle or extracerebral CSF. No tunable parameter.</dd>
+<dt>Measured</dt><dd>98 of 176 false alarms lay in free cerebrospinal fluid. 0.585 &#8594; 0.646 at the fixed operating point, 0 of 139 lesions lost; cross-selected 0.622 <a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 4.3</a>. Further hand-made location and shape rules against vessels brought nothing <a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 5i</a>.</dd>
+</dl></div></details>
 <div class="arrow">&#8595;</div>
 
-<details class="step" data-s="open"><summary><span class="n">10</span><span class="t">Optional second stage: look at every candidate again</span> <span class="tag open">confirmed on SWI only</span><span class="shape">3 x 16 x 32 x 32 &#8594; yes / no</span></summary>
-<div>
-<dl>
-<dt>Original</dt><dd>A second network (24-voxel cubes) classifies every candidate; a multi-task teacher guides it by knowledge distillation<sup class="r"><a href="#r1">1</a>,<a href="#r18">18</a></sup>. Trained per dataset.</dd>
-<dt>Here</dt><dd>Candidates are the components above a low threshold (0.15), without the CSF rule. A small plain 3D CNN (three double-convolution blocks with 16 / 32 / 64 channels, global average pooling, 0.22 M parameters) sees T2*, FRST and the first stage's probability
-in a 16 mm cube around the candidate, plus the tissue class, and answers yes / no. One classifier is trained on the candidates of all cohorts together and evaluated with nested cross-validation.</dd>
-<dt>Why</dt><dd>Per cohort the candidate sets were too small to learn from; pooled they are not. The classifier learns the CSF rule without being told and can weigh soft tissue evidence where a hard rule deletes true lesions (on SWI the rule removes 74 real microbleeds).</dd>
-<dt>Measured</dt><dd>Against threshold + CSF rule: SWI <span class="num">+0.044 [+0.012; +0.085]</span> (reproduced with a second seed and three classifier families); T2* <span class="num">+0.001</span>; VALDO <span class="num">-0.003</span> -- equal to the rule.
-A classifier trained on VALDO candidates only transfers without adaptation (SWI 0.671 against 0.672 for the pooled one); fine-tuning it with 10-25 % of the target cases hurts.
-External check on a public SWI cohort<sup class="r"><a href="#r19">19</a></sup> (57 cases, 146 microbleeds, nothing trained on it): first stage + CSF rule 0.613, with the VALDO-trained classifier 0.630, median F1 per subject 0.667.</dd>
-</dl></div></details>
+<details class="step" data-s="open"><summary><span class="n">9</span><span class="t">Optional second stage: a classifier looks at every candidate again</span> <span class="tag open">confirmed on SWI only</span><span class="shape">3 x 16 x 32 x 32 &#8594; yes / no</span></summary>
+<div><dl>
+<dt>Methods available</dt><dd>No second stage. Or a classifier on a small cube around every candidate, the pattern of false-positive reduction in nodule detection<sup class="r"><a href="#r39">39</a></sup> and of the microbleed cascades<sup class="r"><a href="#r40">40</a>,<a href="#r42">42</a>,<a href="#r1">1</a></sup>.
+Families measured here: a plain threshold on the first stage's probability; logistic regression; random forest<sup class="r"><a href="#r45">45</a></sup>; gradient boosting<sup class="r"><a href="#r45">45</a></sup>; a small 3D CNN; the same CNN at two scales; a teacher-student pair<sup class="r"><a href="#r18">18</a></sup>; a self-supervised pre-trained encoder; and the union of candidates from three seeds. Each trained per cohort, or on the candidates of all cohorts together.</dd>
+<dt>How chosen</dt><dd>Every family in nested cross-validation against the plain threshold plus CSF rule; the pooled 3D CNN then reproduced with an independent first stage and ten seeds.</dd>
+<dt>Used</dt><dd>Candidates are the components above a low threshold (0.15, 1 mm&#179;) without the CSF rule. A plain 3D CNN (three double-convolution blocks with 16 / 32 / 64 channels, global average pooling, 0.22 M parameters) sees image, FRST and the first stage's probability in a 16 mm cube plus the tissue class, and answers yes / no. One classifier is trained on the candidates of all cohorts together.</dd>
+</dl>
+<div class="scroll"><table style="margin-top:.4rem">
+<tr><th>Second-stage variant</th><th>VALDO</th><th>In-house T2*</th><th>In-house SWI</th><th>Source</th></tr>
+<tr><td>threshold only (fixed cell)</td><td class="r">0.585</td><td class="r">0.654</td><td class="r">0.626</td><td><a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/OVERVIEW-tests-2026-09-29.md">all tests</a></td></tr>
+<tr><td>+ hard CSF rule (step 8)</td><td class="r">0.646</td><td class="r">0.670</td><td class="r">0.614 (deletes 74 real microbleeds)</td><td><a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 4.3</a></td></tr>
+<tr><td>per cohort: logistic / forest / boosting / CNN</td><td colspan="3">at or below the threshold in every cohort: the candidate sets were too small to learn from</td><td><a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 5d</a></td></tr>
+<tr><td>shared forest / logistic over all cohorts</td><td colspan="3">&#177;0.04 depending on pool composition; the gain dissolved with an independent first stage</td><td><a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 5e</a></td></tr>
+<tr><td><strong>shared 3D CNN, 16 mm cube</strong> (ten seeds)</td><td class="r">0.632 (= rule)</td><td class="r">0.671 (= rule)</td><td class="r"><strong>0.672</strong>, <span class="num">+0.044 [+0.012; +0.085]</span> against the rule</td><td><a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 5j, 5z</a></td></tr>
+<tr><td>two scales, 16 + 28 mm</td><td class="r"><span class="num">-0.030</span> confirmed</td><td class="r">+0.016 / +0.019</td><td class="r">+0.013 / +0.016</td><td><a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 5r</a></td></tr>
+<tr><td>teacher-student distillation<sup class="r"><a href="#r18">18</a></sup>, ten seeds</td><td class="r">+0.001</td><td class="r">+0.003</td><td class="r">+0.002</td><td><a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 5z</a></td></tr>
+<tr><td>self-supervised pre-trained encoder</td><td class="r">+0.012</td><td class="r">-0.005</td><td class="r">-0.011</td><td><a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 5ab</a></td></tr>
+<tr><td>union of candidates from three seeds</td><td class="r">-0.039</td><td class="r">0.000</td><td class="r">+0.006</td><td><a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 5y</a></td></tr>
+<tr><td>classifier trained on VALDO candidates only, applied without adaptation</td><td class="r">--</td><td class="r">0.648</td><td class="r">0.671 (= pooled)</td><td><a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 5ae, arm 4</a></td></tr>
+</table></div>
+<p style="margin:.5rem 0 0">The classifier learns the CSF rule without being told and can weigh soft tissue evidence where the hard rule deletes true lesions. Fine-tuning the VALDO classifier with 10-25 % of the target cases hurts; it is neutral only from 50 % on.</p>
+</div></details>
+<div class="arrow">&#8595;</div>
 
+<details class="step" data-s="io"><summary><span class="n">10</span><span class="t">Output</span><span class="shape">mask + list of lesions</span></summary>
+<div>A binary microbleed mask on the training grid, the number of lesions, and for each lesion its size and location (lobar / deep / infratentorial, from the SynthSeg map<sup class="r"><a href="#r17">17</a></sup>).
+The <a href="slices/">quality-control pages</a> of this site show reference and prediction side by side for every VALDO case.</div></details>
 </div>
-<h2>2&nbsp; The network in detail</h2>
+
+<h2>5&nbsp; How the score grew on VALDO</h2>
+<div class="bars">
+  <div>attention U-Net with the MicrobleedNet-style recipe, 40 epochs</div><div><div class="bar r" style="width:38%"></div></div><div class="num">0.245</div>
+  <div>+ anisotropic U-Net wins the arena (section 3)</div><div><div class="bar" style="width:62%"></div></div><div class="num">0.404</div>
+  <div>+ fixed 60-epoch schedule (step 6)</div><div><div class="bar" style="width:73%"></div></div><div class="num">0.470</div>
+  <div>+ no vessel inpainting (step 2)</div><div><div class="bar g" style="width:91%"></div></div><div class="num">0.588</div>
+  <div>+ fixed threshold, size limits, CSF rule (step 8)</div><div><div class="bar g" style="width:100%"></div></div><div class="num">0.646</div>
+</div>
+<p class="note" style="margin-top:.8rem">Honest reading: 0.646 is the better of two random seeds (the other reaches 0.590); the mean of two seeds gives 0.647 <a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 5u</a>.
+With the challenge's own rule (median F1 per subject, centroids within 5 mm) the model reaches 0.667 in cross-validation; the best challenge teams reported 0.667-0.684 on a hidden test set<sup class="r"><a href="#r2">2</a></sup>,
+and CenSynCMB (three sequences) 0.743<sup class="r"><a href="#r16">16</a></sup>.<br>
+The 15 VALDO cases held out from all development were measured once, on 28 September 2026, with the frozen chain: pooled F1 0.468. One case carries 73 of the 97 lesions (small, low-contrast; sensitivity 0.20 there);
+without it 0.731, median F1 per case 0.667 <a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 5ad</a>. The chain is not over-fitted to its folds; its limit is a heavy load of small microbleeds.</p>
+
+<h2>6&nbsp; From VALDO to the Charité cohorts</h2>
+<p>The chain was built on VALDO and then carried over to the two in-house cohorts. The question was how: use the VALDO network as it is, mix the cohorts, fine-tune, or train the same recipe per cohort
+<a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 5e, 5h</a>. Only pooled scores of the in-house cohorts appear on this page.</p>
+<div class="scroll"><table>
+<tr><th>Strategy for the first stage</th><th class="r">T2* (75 cases, 828 CMB)</th><th class="r">SWI (61 cases, 652 CMB)</th><th>Verdict</th></tr>
+<tr><td>VALDO network without adaptation</td><td class="r">0.622</td><td class="r">0.305</td><td>reference</td></tr>
+<tr><td>pre-training on all cohorts, then fine-tuning</td><td class="r"><span class="num">-0.039</span> confirmed</td><td class="r"><span class="num">-0.045</span> confirmed</td><td><span class="tag harm">tested, harmful</span></td></tr>
+<tr><td>mixed training VALDO + in-house, equal budget per case</td><td class="r"><span class="num">+0.001</span></td><td class="r">--</td><td><span class="tag nogain">tested, no gain</span></td></tr>
+<tr><td>fine-tuning from the VALDO network, 30 epochs</td><td class="r">= own training</td><td class="r">rather worse</td><td><span class="tag nogain">tested, no gain</span></td></tr>
+<tr><td><strong>own training per cohort, same recipe, 60 epochs</strong></td><td class="r"><strong>0.663</strong></td><td class="r"><strong>0.626</strong></td><td><span class="tag meas">chosen</span></td></tr>
+<tr><td>+ shared second-stage classifier (step 9)</td><td class="r"><strong>0.671</strong></td><td class="r"><strong>0.672</strong></td><td><span class="tag meas">chosen</span></td></tr>
+<tr><td>MicrobleedNet<sup class="r"><a href="#r1">1</a></sup> fine-tuned on the same folds</td><td class="r">0.277</td><td class="r">0.406</td><td>baseline</td></tr>
+<tr><td>SHIVA-CMB<sup class="r"><a href="#r43">43</a></sup> as released</td><td class="r">0.312</td><td class="r">--</td><td>baseline</td></tr>
+</table></div>
+<p>The network finds the same lesions across cohorts; what does not transfer is what is <em>not</em> a lesion. Each sequence therefore gets its own first-stage network, while the second-stage classifier transfers,
+even when trained on VALDO candidates only (SWI 0.671 against 0.672 for the pooled one). The chain can thus be trained from public data alone.</p>
+<p><strong>External check</strong> on a public SWI cohort<sup class="r"><a href="#r19">19</a></sup> (57 cases, 146 microbleeds, nothing trained on it): VALDO network alone 0.525, with the CSF rule 0.613, SWI network with the VALDO-trained classifier 0.630
+(<span class="num">+0.106</span> confirmed against the rule), median F1 per subject 0.667 <a class="lb" href="https://github.com/mendeltem/cmb-valdo-chain/blob/main/docs/WORKLOG.md">lab book 5ae, arm 4</a>.</p>
+
+<h2>7&nbsp; The network in detail</h2>
 <div class="scroll">
 <svg viewBox="0 0 900 540" width="100%" role="img" aria-label="Anisotropic 3D U-Net: encoder on the left, decoder on the right, skip connections in between">
   <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#5b6878"/></marker></defs>
   <style>.b{fill:#e8f0fb;stroke:#1866c4;stroke-width:1.5}.o{fill:#fff1e0;stroke:#d9822b;stroke-width:1.8}.m{fill:#efe9fb;stroke:#6c5ce7;stroke-width:1.5}.l{stroke:#5b6878;stroke-width:1.4;fill:none}
   .s{stroke:#9aa6b5;stroke-width:1.4;stroke-dasharray:6 5;fill:none}.t1{font-size:14px;font-weight:650;fill:#1c2430}.t2{font-size:12px;fill:#5b6878}.t3{font-size:11.5px;fill:#5b6878;font-style:italic}</style>
-  <text x="40" y="24" class="t2">input: 2 channels (T2*, FRST), 38 x 62 x 94 voxels, padded to 40 x 64 x 96</text>
+  <text x="40" y="24" class="t2">input: 2 channels (T2* or SWI, FRST), 38 x 62 x 94 voxels, padded to 40 x 64 x 96</text>
   <path class="l" d="M150 30 V58" marker-end="url(#a)"/>
   <rect class="o" x="40" y="60" width="220" height="56" rx="8"/><text x="52" y="83" class="t1">level 0 &#183; 32 channels</text><text x="52" y="102" class="t2">40 x 64 x 96 &#183; conv 1x3x3</text>
   <rect class="b" x="80" y="150" width="220" height="56" rx="8"/><text x="92" y="173" class="t1">level 1 &#183; 64 channels</text><text x="92" y="192" class="t2">40 x 32 x 48 &#183; conv 3x3x3</text>
@@ -221,71 +350,49 @@ External check on a public SWI cohort<sup class="r"><a href="#r19">19</a></sup> 
   <text x="40" y="528" class="t2">every block: (convolution &#8594; InstanceNorm &#8594; LeakyReLU) x 2 &#183; orange = convolution and pooling in-plane only (the through-plane direction is mostly interpolated)</text>
 </svg></div>
 
-<h2>3&nbsp; What each decision was worth</h2>
-<div class="bars">
-  <div>3D attention U-Net, original recipe, 40 epochs</div><div><div class="bar r" style="width:38%"></div></div><div class="num">0.245</div>
-  <div>+ anisotropic U-Net (step 5)</div><div><div class="bar" style="width:62%"></div></div><div class="num">0.404</div>
-  <div>+ fixed 60-epoch schedule (step 6)</div><div><div class="bar" style="width:73%"></div></div><div class="num">0.470</div>
-  <div>+ original vessel inpainting removed (step 2)</div><div><div class="bar g" style="width:91%"></div></div><div class="num">0.588</div>
-  <div>+ fixed threshold, size limits, CSF rule (step 8)</div><div><div class="bar g" style="width:100%"></div></div><div class="num">0.646</div>
-</div>
-<p class="note" style="margin-top:.8rem">Honest reading: 0.646 is the better of two random seeds (the other reaches 0.590); six nearly identical runs average 0.61, and the mean of two seeds reliably gives about 0.64 (0.647).
-With the challenge's own rule (median F1 per subject, centroids within 5 mm) the model reaches 0.667 in cross-validation; the best challenge teams reported 0.667-0.684 on a hidden test set<sup class="r"><a href="#r2">2</a></sup>,
-and CenSynCMB (three sequences) 0.743 per-subject mean in cross-validation<sup class="r"><a href="#r16">16</a></sup>, where this model reaches 0.57-0.63. The gap is precision.<br>
-Fifteen VALDO cases were held out from all development and measured once, on 28 September 2026, with the frozen chain: pooled F1 0.468. One case carries 73 of the 97 lesions (small, low-contrast; sensitivity 0.20 there);
-without it 0.731, median F1 per case 0.667. The chain is not over-fitted to its folds; its limit is a heavy load of small microbleeds. These cases were looked at once early in the project, before the chain was built.</p>
-
-<h2>4&nbsp; Original and this work, side by side</h2>
+<h2>8&nbsp; For readers who know MicrobleedNet: the same decisions, side by side</h2>
+<p class="lead">MicrobleedNet<sup class="r"><a href="#r1">1</a></sup> was one contestant among others, but it is the closest published relative, so its choices are listed next to ours. Evidence column: the paired measurement on VALDO.</p>
 <div class="scroll"><table>
-<tr><th>Building block</th><th>MicrobleedNet (paper<sup class="r"><a href="#r1">1</a></sup> / code 958f1cb)</th><th>This work</th><th>Evidence</th></tr>
-<tr><td>Design</td><td>two stages: candidate detection (48&#179;) + discriminator (24&#179;) with knowledge distillation</td><td>one stage; second stage optional, one classifier for all cohorts</td><td>second stage: SWI +0.044 [+0.012; +0.085], VALDO and T2* equal to the CSF rule</td></tr>
-<tr><td>Bias field</td><td>none</td><td>FSL FAST -B before everything</td><td>without: -0.022 [-0.097; +0.052], within noise</td></tr>
+<tr><th>Building block</th><th>MicrobleedNet (paper<sup class="r"><a href="#r1">1</a></sup> / code 958f1cb)</th><th>This pipeline</th><th>Evidence</th></tr>
+<tr><td>Design</td><td>two stages: candidate detection (48&#179;) + discriminator (24&#179;) with knowledge distillation</td><td>one stage; second stage optional, one classifier for all cohorts</td><td>second stage: SWI +0.044 [+0.012; +0.085]; VALDO and T2* equal to the CSF rule</td></tr>
+<tr><td>Brain extraction and bias field</td><td>FSL BET and FAST -B in the released preprocessing script (<code>skull_strip_bias_field_correct.sh</code>)</td><td>same idea: delivered mask or HD-BET, FSL FAST -B once per case</td><td>without the bias correction: -0.022 [-0.097; +0.052], within noise</td></tr>
+<tr><td>Intensity scale</td><td>1 - I / max inside the mask</td><td>same</td><td>z-score, percentile and landmark scales measured, none better</td></tr>
 <tr><td>Grid</td><td>native voxels</td><td>0.5 x 0.5 x 1.0 mm for all cohorts</td><td>z = 2 mm: -0.036 [-0.105; +0.032]</td></tr>
-<tr><td>Vessel inpainting</td><td>yes</td><td>no</td><td>+0.136 [+0.065; +0.226]; touches 109 of 236 lesions</td></tr>
+<tr><td>Vessel inpainting</td><td>yes</td><td>no</td><td>+0.136 [+0.065; +0.226] without it; it touches 109 of 236 lesions</td></tr>
 <tr><td>FRST</td><td>two radii in the public code (four in the paper), integer arithmetic, per-slice maximum</td><td>four radii in mm, float arithmetic, fixed scale</td><td>hit rate 82 % &#8594; 96 %; without FRST -0.053 [-0.116; +0.004]</td></tr>
-<tr><td>Network</td><td>3D U-Net-like encoder-decoder</td><td>anisotropic 3D U-Net</td><td>+0.159 [+0.091; +0.234] against attention U-Net; second tournament: all eight alternatives lower</td></tr>
-<tr><td>Imbalance</td><td>1:1 patches, lesion voxels weighted x10</td><td>60 % lesion patches, no voxel weights</td><td>33 % lesion patches: collapse</td></tr>
+<tr><td>Network</td><td>3D U-Net-like encoder-decoder</td><td>anisotropic 3D U-Net</td><td>+0.159 [+0.091; +0.234] against the attention U-Net; round 2: all alternatives lower</td></tr>
+<tr><td>Imbalance</td><td>1:1 patches, lesion voxels weighted x10</td><td>60 % lesion patches, no voxel weights</td><td>33 % lesion patches: collapse; 40 %: -0.459</td></tr>
+<tr><td>Patch size</td><td>48&#179; voxels on the native grid</td><td>38 x 31 x 47 mm</td><td>24 mm patches: -0.216 [-0.277; -0.156]</td></tr>
 <tr><td>Training length</td><td>up to 100 epochs, early stopping</td><td>60-epoch schedule, checkpoint by inner fold</td><td>0.404 &#8594; 0.470</td></tr>
 <tr><td>Post-processing</td><td>volume, ellipticity, distance to mask border; thresholds per dataset</td><td>one fixed setting + CSF rule</td><td>0.585 &#8594; 0.646, no lesion lost</td></tr>
+<tr><td>Whole pipeline on the same folds</td><td>VALDO 0.040; in-house SWI 0.406, T2* 0.277</td><td>VALDO 0.647; in-house SWI 0.672, T2* 0.671</td><td>sections 3 and 6</td></tr>
 </table></div>
 
-<h2>5&nbsp; How it is evaluated</h2>
-<ul>
-<li>72 cases: 15 held out (97 lesions), 57 in five stratified folds (139 lesions). For fold k, another fold selects checkpoint and threshold; fold k is only predicted.</li>
-<li>Lesion-level F1 pooled over cases: 26-connected components, a reference lesion counts as found when a predicted component touches it; every predicted component that touches none is a false alarm.
-Detection of small sparse objects is an instance problem, so the metric counts lesions, not voxels<sup class="r"><a href="#r20">20</a></sup>.</li>
-<li>Every comparison is paired over the same cases (bootstrap over cases<sup class="r"><a href="#r21">21</a></sup>, 10 000 draws, 95 % interval). "No gain" means the interval includes zero or lies below it.
-A single U-Net training scatters by about 0.08 F1 between random seeds; decisions below that size need a second seed.</li>
-<li>Transfer to two private cohorts (T2* with 5 mm slices, 75 cases; SWI, 61 cases): each sequence needs its own first-stage model; training on the target cohort and fine-tuning the VALDO model are equivalent on T2*;
-zero-shot use and joint training of all cohorts are measurably worse. The network finds the same lesions across cohorts -- what does not transfer is what is <em>not</em> a lesion. The classifier of step 10 does transfer.</li>
-<li>External validation on a public SWI cohort of 57 cases<sup class="r"><a href="#r19">19</a></sup>, nothing trained on it: F1 0.613-0.630 pooled, median 0.667 per subject (section 1, step 10).</li>
-</ul>
-
 <h2 id="refs">References</h2>
-<p class="lead">Standard citation, then in grey what this page takes from the source. DOIs resolved on 7 October 2026.</p>
+<p class="lead">Standard citation, then in grey what this page takes from the source. DOIs and arXiv identifiers resolved on 7 October 2026.</p>
 <ol class="refs">
 <li id="r1">Sundaresan V, Arthofer C, Zamboni G, et al. Automated detection of cerebral microbleeds on MR images using knowledge distillation framework. <em>Front Neuroinform</em> 2023;17:1204186. <a href="https://doi.org/10.3389/fninf.2023.1204186">doi:10.3389/fninf.2023.1204186</a>
-<span class="use">The reference pipeline (MicrobleedNet): inverted intensity scale, vessel inpainting, FRST channel, two-stage design with a 48-voxel detector and a 24-voxel discriminator trained by distillation, patch balancing with ten-fold lesion weights, post-processing by volume, ellipticity and border distance. Public code at commit 958f1cb is the second reference.</span></li>
+<span class="use">MicrobleedNet: a contestant in section 3 (fine-tuned as released) and the source of the inverted intensity scale (kept), the FRST channel (kept, re-implemented), the vessel inpainting (measured, harmful), the two-stage design with distillation, patch balancing with ten-fold lesion weights and post-processing by volume, ellipticity and border distance. Public code at commit 958f1cb, including its preprocessing script with FSL BET and FAST -B.</span></li>
 <li id="r2">Sudre CH, Van Wijnen K, Dubost F, et al. Where is VALDO? VAscular Lesions Detection and segmentatiOn challenge at MICCAI 2021. <em>Med Image Anal</em> 2024;91:103029. <a href="https://doi.org/10.1016/j.media.2023.103029">doi:10.1016/j.media.2023.103029</a>
 <span class="use">The data (Task 2: 72 T2*-GRE cases from three cohorts, 2-10 mm hypointense lesions annotated by consensus), the challenge metric (median F1 per subject, centroids within 5 mm) and the top-team scores of 0.667-0.684. Licence CC BY-NC-SA 4.0.</span></li>
 <li id="r3">Greenberg SM, Vernooij MW, Cordonnier C, et al. Cerebral microbleeds: a guide to detection and interpretation. <em>Lancet Neurol</em> 2009;8:165-174. <a href="https://doi.org/10.1016/S1474-4422(09)70013-4">doi:10.1016/S1474-4422(09)70013-4</a>
-<span class="use">What a microbleed is on T2*/SWI: a small round or ovoid hypointense focus of 2-10 mm in brain parenchyma with blooming, and the mimics that have to be excluded (vessel cross-sections, calcification, iron deposits, bone, air).</span></li>
+<span class="use">What a microbleed is on T2*/SWI: a small round or ovoid hypointense focus of 2-10 mm in brain parenchyma with blooming, and the mimics that have to be excluded. Basis of the CSF rule in step 8.</span></li>
 <li id="r4">Zhang Y, Brady M, Smith S. Segmentation of brain MR images through a hidden Markov random field model and the expectation-maximization algorithm. <em>IEEE Trans Med Imaging</em> 2001;20:45-57. <a href="https://doi.org/10.1109/42.906424">doi:10.1109/42.906424</a>
 <span class="use">FSL FAST: tissue segmentation with a built-in estimate of the smooth multiplicative bias field; the <code>-B</code> option writes the bias-corrected image used in step 1.</span></li>
 <li id="r5">Frangi AF, Niessen WJ, Vincken KL, Viergever MA. Multiscale vessel enhancement filtering. <em>MICCAI 1998, LNCS</em> 1496:130-137. <a href="https://doi.org/10.1007/BFb0056195">doi:10.1007/BFb0056195</a>
-<span class="use">The vesselness filter from Hessian eigenvalues that the original pipeline uses to decide what to paint over (step 2).</span></li>
+<span class="use">The vesselness filter from Hessian eigenvalues behind the inpainting option of step 2.</span></li>
 <li id="r6">Isensee F, Jaeger PF, Kohl SAA, Petersen J, Maier-Hein KH. nnU-Net: a self-configuring method for deep learning-based biomedical image segmentation. <em>Nat Methods</em> 2021;18:203-211. <a href="https://doi.org/10.1038/s41592-020-01008-z">doi:10.1038/s41592-020-01008-z</a>
-<span class="use">Standard practice adopted here: a common target spacing for all cases, in-plane-only pooling on anisotropic grids, a foreground-oversampling share for patches, sliding-window inference with overlap, ensembling and mirror test-time augmentation.</span></li>
+<span class="use">Standard practice adopted here: a common target spacing, in-plane-only pooling on anisotropic grids, foreground oversampling, sliding-window inference, ensembling and mirror test-time augmentation; z-score normalisation (step 1), the plain nnU-Net-style U-Net of round 1 and nnU-Net v2 as a complete pipeline (round 2, open).</span></li>
 <li id="r7">Loy G, Zelinsky A. Fast radial symmetry for detecting points of interest. <em>IEEE Trans Pattern Anal Mach Intell</em> 2003;25:959-973. <a href="https://doi.org/10.1109/TPAMI.2003.1217601">doi:10.1109/TPAMI.2003.1217601</a>
 <span class="use">The transform behind the second input channel (step 4): gradient-directed voting at a set of radii, which highlights small round blobs and suppresses edges.</span></li>
 <li id="r8">Ronneberger O, Fischer P, Brox T. U-Net: convolutional networks for biomedical image segmentation. <em>MICCAI 2015, LNCS</em> 9351:234-241. <a href="https://doi.org/10.1007/978-3-319-24574-4_28">doi:10.1007/978-3-319-24574-4_28</a>
-<span class="use">The encoder-decoder with skip connections that the network of step 5 is built on.</span></li>
+<span class="use">The encoder-decoder with skip connections that every network of the arena is built on; the 2.5D and the shallow dilated U-Net of round 1.</span></li>
 <li id="r9">&#199;i&#231;ek &#214;, Abdulkadir A, Lienkamp SS, Brox T, Ronneberger O. 3D U-Net: learning dense volumetric segmentation from sparse annotation. <em>MICCAI 2016, LNCS</em> 9901:424-432. <a href="https://doi.org/10.1007/978-3-319-46723-8_49">doi:10.1007/978-3-319-46723-8_49</a>
-<span class="use">The volumetric form of the U-Net with 3D convolutions and poolings.</span></li>
+<span class="use">The volumetric form of the U-Net with 3D convolutions and poolings; the winner of the arena from its second level on.</span></li>
 <li id="r10">Ulyanov D, Vedaldi A, Lempitsky V. Instance normalization: the missing ingredient for fast stylization. <em>arXiv</em> 2016; <a href="https://arxiv.org/abs/1607.08022">arXiv:1607.08022</a> (preprint).
-<span class="use">The normalisation used in every block of the network; unlike batch normalisation it does not depend on the batch, which matters at batch size 4 and for inference one volume at a time.</span></li>
+<span class="use">The normalisation in every block of the network; unlike batch normalisation it does not depend on the batch, which matters at batch size 4 and for inference one volume at a time.</span></li>
 <li id="r11">Milletari F, Navab N, Ahmadi SA. V-Net: fully convolutional neural networks for volumetric medical image segmentation. <em>3DV 2016</em>:565-571. <a href="https://doi.org/10.1109/3DV.2016.79">doi:10.1109/3DV.2016.79</a>
-<span class="use">The soft Dice loss, which is half of the training objective in step 6 and the reason 33 % lesion patches collapse: on an empty patch the smoothed Dice is maximal for an empty prediction.</span></li>
+<span class="use">The soft Dice loss, half of the training objective in step 6 and the reason 33 % lesion patches collapse: on an empty patch the smoothed Dice is maximal for an empty prediction.</span></li>
 <li id="r12">Loshchilov I, Hutter F. Decoupled weight decay regularization. <em>ICLR 2019</em>; <a href="https://arxiv.org/abs/1711.05101">arXiv:1711.05101</a>.
 <span class="use">AdamW, the optimiser of step 6 (learning rate 3e-4, weight decay 1e-4).</span></li>
 <li id="r13">Loshchilov I, Hutter F. SGDR: stochastic gradient descent with warm restarts. <em>ICLR 2017</em>; <a href="https://arxiv.org/abs/1608.03983">arXiv:1608.03983</a>.
@@ -293,23 +400,74 @@ zero-shot use and joint training of all cohorts are measurably worse. The networ
 <li id="r14">Micikevicius P, Narang S, Alben J, et al. Mixed precision training. <em>ICLR 2018</em>; <a href="https://arxiv.org/abs/1710.03740">arXiv:1710.03740</a>.
 <span class="use">Training with half-precision activations and full-precision weights; here in the bfloat16 variant, which needs no loss scaling.</span></li>
 <li id="r15">Kofler F, Shit S, Ezhov I, et al. blob loss: instance imbalance aware loss functions for semantic segmentation. <em>IPMI 2023, LNCS</em> 13939:755-767. <a href="https://doi.org/10.1007/978-3-031-34048-2_58">doi:10.1007/978-3-031-34048-2_58</a>; preprint <a href="https://arxiv.org/abs/2205.08209">arXiv:2205.08209</a>.
-<span class="use">A loss that computes the Dice term per connected lesion ("blob") and averages over lesions, so a large lesion cannot hide many small ones; reported to raise instance-level F1 and sensitivity on multiple-sclerosis lesions and liver tumours. Tested in step 6: higher sensitivity for small microbleeds, lower F1.</span></li>
+<span class="use">A loss that computes the Dice term per connected lesion and averages over lesions, so a large lesion cannot hide many small ones. Tested in step 6: higher sensitivity for small microbleeds, lower F1.</span></li>
 <li id="r16">He et al. CenSynCMB: centre maps and physics-guided synthesis for microbleed detection. <em>arXiv</em> 2026; <a href="https://arxiv.org/abs/2607.05325">arXiv:2607.05325</a> (preprint, not peer-reviewed).
-<span class="use">On the same benchmark (VALDO Task 2, three input sequences): an auxiliary centre-map head, re-weighting towards missed lesions and fold-wise physics-based synthesis of microbleeds and mimics, F1 65.8 &#8594; 74.3 per subject. The first two were tested in step 6 and synthetic lesions in two variants; none raised F1 on a single T2* sequence.</span></li>
+<span class="use">On the same benchmark with three input sequences: an auxiliary centre-map head, re-weighting towards missed lesions and physics-based synthesis of microbleeds and mimics, F1 65.8 &#8594; 74.3 per subject. The first two were tested in step 6 and synthetic lesions in two variants; none raised F1 on a single sequence.</span></li>
 <li id="r17">Billot B, Greve DN, Puonti O, et al. SynthSeg: segmentation of brain MRI scans of any contrast and resolution without retraining. <em>Med Image Anal</em> 2023;86:102789. <a href="https://doi.org/10.1016/j.media.2023.102789">doi:10.1016/j.media.2023.102789</a>
-<span class="use">The contrast-agnostic brain segmentation whose ventricle and CSF labels drive the rule of step 8, and whose lobar labels give the lesion location in the output (step 9).</span></li>
+<span class="use">The contrast-agnostic brain segmentation whose ventricle and CSF labels drive the rule of step 8, whose lobar labels give the lesion location in the output, and whose labels were tested as a tight mask (step 0) and as input channels (step 4).</span></li>
 <li id="r18">Hinton G, Vinyals O, Dean J. Distilling the knowledge in a neural network. <em>arXiv</em> 2015; <a href="https://arxiv.org/abs/1503.02531">arXiv:1503.02531</a> (preprint).
-<span class="use">Teacher-student training, the mechanism of the original's second stage; a teacher-student variant of step 10 was tested here with ten seeds and gained +0.001 to +0.003.</span></li>
+<span class="use">Teacher-student training, one of the second-stage options in step 9; tested with ten seeds and gained +0.001 to +0.003.</span></li>
 <li id="r19">Momeni S, Fazlollahi A, Yates P, et al. Synthetic microbleeds generation for classifier training without ground truth. <em>Comput Methods Programs Biomed</em> 2021;207:106127. <a href="https://doi.org/10.1016/j.cmpb.2021.106127">doi:10.1016/j.cmpb.2021.106127</a>
-<span class="use">Source of the external SWI cohort (57 subjects, 146 expert-marked microbleeds, non-commercial licence) used for the zero-shot check in step 10 and section 5; the paper itself is about training on synthetic lesions.</span></li>
+<span class="use">Source of the external SWI cohort (57 subjects, 146 expert-marked microbleeds, non-commercial licence) used for the external check in section 6; the paper itself is about training on synthetic lesions, an idea tested in step 6 without gain.</span></li>
 <li id="r20">Maier-Hein L, Reinke A, Godau P, et al. Metrics reloaded: recommendations for image analysis validation. <em>Nat Methods</em> 2024;21:195-212. <a href="https://doi.org/10.1038/s41592-023-02151-z">doi:10.1038/s41592-023-02151-z</a>
-<span class="use">The case for choosing the metric from the problem: small, sparse, countable objects are an instance-detection problem, so lesion-level F1 and sensitivity are reported instead of voxel Dice.</span></li>
+<span class="use">The case for choosing the metric from the problem: small, sparse, countable objects are an instance-detection problem, so lesion-level F1 is reported instead of voxel Dice.</span></li>
 <li id="r21">Efron B, Tibshirani RJ. <em>An Introduction to the Bootstrap.</em> New York: Chapman &amp; Hall, 1993.
 <span class="use">The paired bootstrap over cases behind every interval on this page.</span></li>
+<li id="r22">Tustison NJ, Avants BB, Cook PA, et al. N4ITK: improved N3 bias correction. <em>IEEE Trans Med Imaging</em> 2010;29:1310-1320. <a href="https://doi.org/10.1109/TMI.2010.2046908">doi:10.1109/TMI.2010.2046908</a>
+<span class="use">The other widely used bias-field correction (step 1); listed as an option, not measured here.</span></li>
+<li id="r23">Isensee F, Schell M, Pflueger I, et al. Automated brain extraction of multisequence MRI using artificial neural networks. <em>Hum Brain Mapp</em> 2019;40:4952-4964. <a href="https://doi.org/10.1002/hbm.24750">doi:10.1002/hbm.24750</a>
+<span class="use">HD-BET, the learned skull-stripper; used for in-house cases delivered without a mask (step 0).</span></li>
+<li id="r24">Ny&#250;l LG, Udupa JK, Zhang X. New variants of a method of MRI scale standardization. <em>IEEE Trans Med Imaging</em> 2000;19:143-150. <a href="https://doi.org/10.1109/42.836373">doi:10.1109/42.836373</a>
+<span class="use">Histogram landmark matching, the intensity-harmonisation option of step 1; measured and harmful.</span></li>
+<li id="r25">Oktay O, Schlemper J, Le Folgoc L, et al. Attention U-Net: learning where to look for the pancreas. <em>MIDL 2018</em>; <a href="https://arxiv.org/abs/1804.03999">arXiv:1804.03999</a>.
+<span class="use">The attention U-Net of round 1 (the starting score 0.245) and the attention gates tested on the winner in round 2 (no gain).</span></li>
+<li id="r26">Zhou Z, Siddiquee MMR, Tajbakhsh N, Liang J. UNet++: a nested U-Net architecture for medical image segmentation. <em>DLMIA 2018, LNCS</em> 11045:3-11. <a href="https://doi.org/10.1007/978-3-030-00889-5_1">doi:10.1007/978-3-030-00889-5_1</a>
+<span class="use">Contestant of round 1.</span></li>
+<li id="r27">Myronenko A. 3D MRI brain tumor segmentation using autoencoder regularization. <em>BrainLes 2018, LNCS</em> 11384:311-320. <a href="https://doi.org/10.1007/978-3-030-11726-9_28">doi:10.1007/978-3-030-11726-9_28</a>
+<span class="use">SegResNet, contestant of round 1.</span></li>
+<li id="r28">Hatamizadeh A, Nath V, Tang Y, Yang D, Roth HR, Xu D. Swin UNETR: Swin transformers for semantic segmentation of brain tumors in MRI images. <em>BrainLes 2021, LNCS</em> 12962:272-284. <a href="https://doi.org/10.1007/978-3-031-08999-2_22">doi:10.1007/978-3-031-08999-2_22</a>
+<span class="use">Transformer-based contestant of round 1.</span></li>
+<li id="r29">Roy S, Koehler G, Ulrich C, et al. MedNeXt: transformer-driven scaling of ConvNets for medical image segmentation. <em>MICCAI 2023, LNCS</em> 14223:405-415. <a href="https://doi.org/10.1007/978-3-031-43901-8_39">doi:10.1007/978-3-031-43901-8_39</a>
+<span class="use">Contestant of round 2: -0.098 against the anisotropic U-Net.</span></li>
+<li id="r30">He K, Zhang X, Ren S, Sun J. Deep residual learning for image recognition. <em>CVPR 2016</em>:770-778. <a href="https://doi.org/10.1109/CVPR.2016.90">doi:10.1109/CVPR.2016.90</a>; Hu J, Shen L, Sun G. Squeeze-and-excitation networks. <em>CVPR 2018</em>:7132-7141. <a href="https://doi.org/10.1109/CVPR.2018.00745">doi:10.1109/CVPR.2018.00745</a>
+<span class="use">Residual blocks and squeeze-and-excitation blocks of the residual-SE U-Net in round 1.</span></li>
+<li id="r31">Alom MZ, Hasan M, Yakopcic C, Taha TM, Asari VK. Recurrent residual convolutional neural network based on U-Net (R2U-Net) for medical image segmentation. <em>arXiv</em> 2018; <a href="https://arxiv.org/abs/1802.06955">arXiv:1802.06955</a>.
+<span class="use">R2U-Net, run in 2.5D in round 2: -0.141.</span></li>
+<li id="r32">Isensee F, Wald T, Ulrich C, et al. nnU-Net revisited: a call for rigorous validation in 3D medical image segmentation. <em>MICCAI 2024</em>; <a href="https://arxiv.org/abs/2404.09556">arXiv:2404.09556</a>.
+<span class="use">The residual-encoder U-Net of round 2 (-0.063); also the warning that many claimed architecture gains do not survive a fair comparison, which is what the arena tests.</span></li>
+<li id="r33">Abraham N, Khan NM. A novel focal Tversky loss function with improved attention U-Net for lesion segmentation. <em>ISBI 2019</em>:683-687. <a href="https://doi.org/10.1109/ISBI.2019.8759329">doi:10.1109/ISBI.2019.8759329</a>
+<span class="use">Loss option of step 6; measured in round 2 and harmful (-0.355).</span></li>
+<li id="r34">Shrivastava A, Gupta A, Girshick R. Training region-based object detectors with online hard example mining. <em>CVPR 2016</em>:761-769. <a href="https://doi.org/10.1109/CVPR.2016.89">doi:10.1109/CVPR.2016.89</a>
+<span class="use">Online hard-negative mining, loss option of step 6 (no gain).</span></li>
+<li id="r35">Lakshminarayanan B, Pritzel A, Blundell C. Simple and scalable predictive uncertainty estimation using deep ensembles. <em>NeurIPS 2017</em>; <a href="https://arxiv.org/abs/1612.01474">arXiv:1612.01474</a>.
+<span class="use">Averaging networks trained with different random seeds, the ensemble of step 7.</span></li>
+<li id="r36">Wang G, Li W, Aertsen M, Deprest J, Ourselin S, Vercauteren T. Aleatoric uncertainty estimation with test-time augmentation for medical image segmentation with convolutional neural networks. <em>Neurocomputing</em> 2019;338:34-45. <a href="https://doi.org/10.1016/j.neucom.2019.01.103">doi:10.1016/j.neucom.2019.01.103</a>
+<span class="use">Mirror test-time augmentation, inference option of step 7 (no gain).</span></li>
+<li id="r37">Billot B, Magdamo C, Cheng Y, Arnold SE, Das S, Iglesias JE. Robust machine learning segmentation for large-scale analysis of heterogeneous clinical brain MRI datasets. <em>Proc Natl Acad Sci USA</em> 2023;120:e2216399120. <a href="https://doi.org/10.1073/pnas.2216399120">doi:10.1073/pnas.2216399120</a>
+<span class="use">The robust SynthSeg variant that is run directly on T2* and SWI images for the CSF rule on the clinical cohorts.</span></li>
+<li id="r38">Myung MJ, Lee KM, Kim HG, et al. Novel approaches to detection of cerebral microbleeds: single deep learning model to achieve a balanced performance. <em>J Stroke Cerebrovasc Dis</em> 2021;30:105886. <a href="https://doi.org/10.1016/j.jstrokecerebrovasdis.2021.105886">doi:10.1016/j.jstrokecerebrovasdis.2021.105886</a>
+<span class="use">Uses a CSF / white-matter mask as location information for microbleed detection; the same idea as the anatomical rule of step 8.</span></li>
+<li id="r39">Setio AAA, Ciompi F, Litjens G, et al. Pulmonary nodule detection in CT images: false positive reduction using multi-view convolutional networks. <em>IEEE Trans Med Imaging</em> 2016;35:1160-1169. <a href="https://doi.org/10.1109/TMI.2016.2536809">doi:10.1109/TMI.2016.2536809</a>
+<span class="use">The pattern of the second stage (step 9): a classifier on small cubes centred on every candidate.</span></li>
+<li id="r40">Dou Q, Chen H, Yu L, et al. Automatic detection of cerebral microbleeds from MR images via 3D convolutional neural networks. <em>IEEE Trans Med Imaging</em> 2016;35:1182-1195. <a href="https://doi.org/10.1109/TMI.2016.2528129">doi:10.1109/TMI.2016.2528129</a>
+<span class="use">The classic two-stage microbleed cascade on the native grid with hard-negative mining; option in steps 3 and 9.</span></li>
+<li id="r41">Liu S, Utriainen D, Chai C, et al. Cerebral microbleed detection using susceptibility weighted imaging and deep learning. <em>NeuroImage</em> 2019;198:271-282. <a href="https://doi.org/10.1016/j.neuroimage.2019.05.046">doi:10.1016/j.neuroimage.2019.05.046</a>
+<span class="use">3D FRST as candidate finder plus a residual network with the phase image; shows what a phase channel would add (step 4), which the target cohorts do not have.</span></li>
+<li id="r42">Al-masni MA, Kim WR, Kim EY, Noh Y, Kim DH. Automated detection of cerebral microbleeds in MR images: a two-stage deep learning approach. <em>NeuroImage Clin</em> 2020;28:102464. <a href="https://doi.org/10.1016/j.nicl.2020.102464">doi:10.1016/j.nicl.2020.102464</a>
+<span class="use">Another two-stage microbleed system (detector plus 3D-CNN discriminator), option in step 9.</span></li>
+<li id="r43">Tsuchida A, Boutinaud P, Verrecchia V, et al. SHIVA-CMB: a deep-learning-based robust cerebral microbleed segmentation tool trained on multi-source T2*GRE- and susceptibility-weighted MRI. <em>Sci Rep</em> 2024;14:30901. <a href="https://doi.org/10.1038/s41598-024-81870-5">doi:10.1038/s41598-024-81870-5</a>
+<span class="use">A released microbleed segmentation tool, run unchanged as an external benchmark (sections 3 and 6); it was trained on 60 of the 72 VALDO cases.</span></li>
+<li id="r44">Baumgartner M, Jaeger PF, Isensee F, Maier-Hein KH. nnDetection: a self-configuring method for medical object detection. <em>MICCAI 2021, LNCS</em> 12905:530-539. <a href="https://doi.org/10.1007/978-3-030-87240-3_51">doi:10.1007/978-3-030-87240-3_51</a>
+<span class="use">Box-based detection as the alternative family of methods (section 2); not run here.</span></li>
+<li id="r45">Breiman L. Random forests. <em>Mach Learn</em> 2001;45:5-32. <a href="https://doi.org/10.1023/A:1010933404324">doi:10.1023/A:1010933404324</a>; Friedman JH. Greedy function approximation: a gradient boosting machine. <em>Ann Stat</em> 2001;29:1189-1232. <a href="https://doi.org/10.1214/aos/1013203451">doi:10.1214/aos/1013203451</a>
+<span class="use">The random forest and gradient boosting classifiers measured as second-stage options in step 9.</span></li>
+<li id="r46">Varoquaux G. Cross-validation failure: small sample sizes lead to large error bars. <em>NeuroImage</em> 2018;180:68-77. <a href="https://doi.org/10.1016/j.neuroimage.2017.06.061">doi:10.1016/j.neuroimage.2017.06.061</a>
+<span class="use">Why differences below about 0.03-0.08 on 57 cases are not decidable without more seeds or more cases (section 1).</span></li>
 </ol>
 
-<footer>Data: VALDO 2021 Task 2<sup class="r"><a href="#r2">2</a></sup>, licence CC BY-NC-SA 4.0 -- see the <a href="about.html">attribution page</a>.
-Reference method: MicrobleedNet<sup class="r"><a href="#r1">1</a></sup>. This page contains no patient data and no figures from private cohorts. Numbers are taken from the project's work log; the full list of experiments, including every negative result, is part of the reproducibility package.</footer>
+<footer>Data: VALDO 2021 Task 2<sup class="r"><a href="#r2">2</a></sup>, licence CC BY-NC-SA 4.0, see the <a href="about.html">attribution page</a>.
+This page contains no patient data and no figures from the in-house cohorts beyond pooled scores. Code, commands and the lab book with every negative result:
+<a href="https://github.com/mendeltem/cmb-valdo-chain">github.com/mendeltem/cmb-valdo-chain</a>.</footer>
 </main>
 </body>
 </html>
