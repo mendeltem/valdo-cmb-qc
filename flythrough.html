@@ -20,32 +20,34 @@
 :root[data-theme="light"]{ --bg:#0b1020; --panel:#121a30; --fg:#e8ecf7; --muted:#94a0c2; --line:#26325a; color-scheme:dark }
 html,body{height:100%}
 body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 var(--display);overflow:hidden}
-#stage{position:absolute;inset:0;outline:none}
+:root{--side:clamp(300px,27vw,440px)}
+#stage{position:absolute;left:0;top:0;bottom:0;right:var(--side);outline:none}
+#side{position:absolute;top:0;right:0;bottom:0;width:var(--side);box-sizing:border-box;padding:calc(64px + env(safe-area-inset-top,0px)) 16px calc(14px + env(safe-area-inset-bottom,0px)) 14px;border-left:1px solid var(--line);background:color-mix(in srgb,var(--panel) 70%,var(--bg));display:flex;flex-direction:column;gap:12px;overflow-y:auto}
 canvas{display:block}
-#top{position:absolute;left:0;right:0;top:0;padding:calc(10px + env(safe-area-inset-top,0px)) 16px 0;display:flex;gap:10px;align-items:flex-start;justify-content:space-between;pointer-events:none}
+#top{position:absolute;left:0;right:var(--side);top:0;padding:calc(10px + env(safe-area-inset-top,0px)) 16px 0;display:flex;gap:10px;align-items:flex-start;justify-content:space-between;pointer-events:none}
 #top h1{margin:0;font-size:17px;font-weight:600;letter-spacing:.01em;text-wrap:balance}
 #top .sub{color:var(--muted);font-size:13px;margin-top:2px}
 #ctl{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;pointer-events:auto}
 button{font:inherit;font-size:13px;color:var(--fg);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 10px;cursor:pointer}
 button:hover{border-color:var(--accent)}button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 button[aria-pressed="true"]{background:var(--accent);color:#1a1200;border-color:var(--accent)}
-#bottom{position:absolute;left:0;right:0;bottom:0;padding:0 16px calc(12px + env(safe-area-inset-bottom,0px));display:grid;gap:8px;pointer-events:none}
-#steps{display:flex;gap:4px;pointer-events:auto;overflow-x:auto;padding-bottom:2px;scrollbar-width:thin}
+#bottom{position:absolute;left:0;right:var(--side);bottom:0;padding:0 12px calc(8px + env(safe-area-inset-bottom,0px));display:grid;gap:5px;pointer-events:none}
+#steps{display:flex;gap:3px;pointer-events:auto;overflow-x:auto;padding-bottom:2px;scrollbar-width:thin}#steps button{padding:2px 6px !important;font-size:11px !important}
 #steps button{flex:0 0 auto;padding:4px 8px;font-family:var(--mono);font-size:12px;border-radius:4px}
 #steps button.cur{background:var(--accent);color:#1a1200;border-color:var(--accent)}
 #steps button.done{border-color:#3b4c80}
-#cap{background:color-mix(in srgb,var(--panel) 88%,transparent);border:1px solid var(--line);border-radius:10px;padding:12px 14px;max-width:760px;pointer-events:auto;backdrop-filter:blur(6px)}
+#cap{background:transparent;border:0;padding:0;max-width:none;pointer-events:auto;font-size:15px}#cap h2{font-size:19px !important;line-height:1.25}#cap p{max-width:none !important;line-height:1.5}
 #cap .k{font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:.06em;text-transform:uppercase}
 #cap h2{margin:2px 0 6px;font-size:18px;font-weight:600;text-wrap:balance}
 #cap p{margin:0;color:var(--fg);max-width:65ch}
 #cap .m{margin-top:6px;color:var(--muted);font-size:13px;font-family:var(--mono)}
-#bar{height:4px;background:var(--line);border-radius:2px;overflow:hidden;max-width:760px}
+#bar{height:3px;background:var(--line);border-radius:2px;overflow:hidden;max-width:none}
 #bar i{display:block;height:100%;width:0;background:var(--accent)}
-#hint{position:absolute;right:16px;bottom:calc(150px + env(safe-area-inset-bottom,0px));color:var(--muted);font-size:12px;text-align:right;pointer-events:none}
-body.talk #cap{max-width:1100px;padding:18px 22px;font-size:20px}body.talk #cap h2{font-size:30px}body.talk #cap .k{font-size:15px}body.talk #cap .m{font-size:17px}body.talk #cap p{max-width:60ch}
-body.talk #steps,body.talk #hint,body.talk #top .sub{display:none}body.talk #top h1{font-size:22px}body.talk #bar{max-width:1100px;height:6px}
+#hint{color:var(--muted);font-size:11.5px;line-height:1.4;margin-top:auto;border-top:1px solid var(--line);padding-top:8px}
+body.talk{--side:clamp(340px,32vw,560px)}body.talk #cap{font-size:18px}body.talk #cap h2{font-size:24px !important}body.talk #cap .k{font-size:13px}body.talk #cap .m{font-size:15px}
+body.talk #steps,body.talk #hint,body.talk #top .sub{display:none}body.talk #top h1{font-size:22px}body.talk #bar{height:4px}
 #holdmark{display:none;font-family:var(--mono);font-size:13px;color:var(--accent);margin-top:6px}body.held #holdmark{display:block}
-@media (max-width:640px){#top{flex-direction:column}#ctl{justify-content:flex-start}#hint{display:none}#cap h2{font-size:16px}}
+@media (max-width:760px){:root{--side:0px}#stage{bottom:42vh;right:0}#side{top:auto;height:42vh;width:100%;border-left:0;border-top:1px solid var(--line);padding:10px 16px}#bottom{right:0;bottom:42vh}#top{flex-direction:column}#ctl{justify-content:flex-start}#hint{display:none}#cap h2{font-size:16px !important}}
 @media (prefers-reduced-motion: reduce){#bar i{transition:none}}
 </style>
 
@@ -64,10 +66,12 @@ body.talk #steps,body.talk #hint,body.talk #top .sub{display:none}body.talk #top
     <button id="fs" title="F: full screen">⛶</button>
   </div>
 </div>
-<div id="hint">→ / clicker = next sub-step · ← back · space = next · A axial/3D · F full screen · P talk mode</div>
+<aside id="side">
+  <div id="cap"><div class="k" id="ck"></div><h2 id="ch"></h2><p id="cp"></p><div class="m" id="cm"></div><div id="holdmark"></div></div>
+  <div id="hint">→ / clicker = next step · ← back · ↑ ↓ other subject · A axial/3D · F full screen · P talk mode</div>
+</aside>
 <div id="bottom">
   <div id="steps"></div>
-  <div id="cap"><div class="k" id="ck"></div><h2 id="ch"></h2><p id="cp"></p><div class="m" id="cm"></div><div id="holdmark"></div></div>
   <div id="bar"><i id="barfill"></i></div>
 </div>
 
@@ -151,7 +155,7 @@ const stationX = i => i * SPACING;
   const grid = new THREE.GridHelper(stationX(N-1)+40, 60, 0x1a2342, 0x141b33); grid.position.set(stationX(N-1)/2, -2.3, 0); scene.add(grid);
 })();
 const stationLabels = [];
-function placeStationLabels(){ stationLabels.forEach(s=>scene.remove(s)); stationLabels.length = 0; T[lang].steps.forEach((s,i)=>{ const sp = labelSprite(s[0], {size:30, scale:0.011}); sp.position.set(stationX(i) + TW*0.5 + 2.2, 0.6, -TD*0.35); scene.add(sp); stationLabels.push(sp); }); }
+function placeStationLabels(){ stationLabels.forEach(s=>scene.remove(s)); stationLabels.length = 0; T[lang].steps.forEach((s,i)=>{ const sp = labelSprite(s[0], {size:30, scale:0.011}); sp.visible = false; sp.position.set(stationX(i) + TW*0.5 + 2.2, 0.6, -TD*0.35); scene.add(sp); stationLabels.push(sp); }); }
 
 // ------------------------------------------------------------------ the travelling volume: the real slice in the middle, the other slices symbolic (outlines) to show the stack is 3D
 const vol = new THREE.Group(); scene.add(vol);
@@ -395,7 +399,7 @@ document.getElementById('prev').onclick = () => { if (hold && playing && playTo 
 document.getElementById('next').onclick = () => { if (hold && playing && playTo !== null) { time = playTo; playTo = null; }   // a sub-step still playing: finish it at once, then start the next one
   const [i, t, k] = subOf(); if (hold) { if (k < SUB && t < 0.999) { playTo = startOf(i) + DUR[i] * (k + 1) / SUB - 0.001; held = false; playing = true; updatePlayBtn(); return; } } jump(Math.min(N-1, i + 1)); };
 document.getElementById('hold').onclick = e => { hold = !hold; e.target.setAttribute('aria-pressed', hold ? 'true' : 'false'); try { localStorage.setItem('cmbfly_hold', hold ? '1' : '0'); } catch(err){} if (!hold && held) { held = false; playing = true; updatePlayBtn(); } };
-document.getElementById('talk').onclick = e => { const on = document.body.classList.toggle('talk'); e.target.setAttribute('aria-pressed', on ? 'true' : 'false'); try { localStorage.setItem('cmbfly_talk', on ? '1' : '0'); } catch(err){} };
+document.getElementById('talk').onclick = e => { const on = document.body.classList.toggle('talk'); setTimeout(() => window.dispatchEvent(new Event('resize')), 30); e.target.setAttribute('aria-pressed', on ? 'true' : 'false'); try { localStorage.setItem('cmbfly_talk', on ? '1' : '0'); } catch(err){} };
 document.getElementById('subjup').onclick = () => switchSubject(-1); document.getElementById('subjdown').onclick = () => switchSubject(1);
 document.getElementById('fs').onclick = () => { const el = document.documentElement; if (document.fullscreenElement) { document.exitFullscreen && document.exitFullscreen(); } else if (el.requestFullscreen) { el.requestFullscreen().catch(()=>{}); } };
 document.getElementById('speed').onclick = e => { speed = speed === 1 ? 2 : speed === 2 ? 0.5 : 1; e.target.textContent = speed + '×'; };
@@ -403,7 +407,7 @@ function applyLang(){ const L = T[lang]; document.getElementById('t1').textConte
 window.addEventListener('keydown', e => { if (e.target.tagName === 'INPUT') return; if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); document.getElementById('next').click(); } else if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); document.getElementById('next').click(); } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); document.getElementById('prev').click(); } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); switchSubject(e.key === 'ArrowDown' ? 1 : -1); } else if (e.key === 'f' || e.key === 'F') { document.getElementById('fs').click(); } else if (e.key === 'p' || e.key === 'P') { document.getElementById('talk').click(); } else if (e.key === 'a' || e.key === 'A') { document.getElementById('view').click(); } else if (e.key === 'Home') { jump(0); } });
 
 // orbit by drag, zoom by wheel
-const VIEWS = {axial:{yaw:0.0, pitch:1.45, dist:8.5}, three:{yaw:0.55, pitch:0.32, dist:13}};
+const VIEWS = {axial:{yaw:0.0, pitch:1.45, dist:6.8}, three:{yaw:0.55, pitch:0.32, dist:11}};
 let view = 'axial'; try { view = localStorage.getItem('cmbfly_view') || 'axial'; } catch(e){}
 const orb = Object.assign({}, VIEWS[view]);
 let drag = null;
