@@ -281,8 +281,8 @@ const cnnLab = labelSprite('3D CNN', {size:24, color:'#e8ecf7', bg:'rgba(0,0,0,0
 let table = null; function buildTable(){ if (table) scene.remove(table); const rows = ['#   volume     location   p max'].concat(REAL.table.map((t,i) => `${i+1}   ${String(t.mm3.toFixed(1)).padStart(5)} mm³   ${t.lage.padEnd(8)}  ${t.p.toFixed(2)}`)); rows.push(`–   missed by the model: ${REAL.fn.length} (reference only)`); if (HAS_FP) rows.push(`×   candidate ${REAL.fp_example.dz_from === REAL.fp_example.dz_to ? 'in' : 'near'} the slice rejected: p ${REAL.fp_example.pmax.toFixed(2)}, ${REAL.fp_example.zext} slice${REAL.fp_example.zext===1?'':'s'}`); table = tableSprite(rows); table.position.set(stationX(8)+4.6, 1.2, 0); table.material.opacity = 0; scene.add(table); }
 
 // ------------------------------------------------------------------ timeline
-const DUR = [3, 6, 6, 6, 30, 8, 10, 12, 18];   // seconds per station
-const SUBS = [1, 2, 2, 2, 10, 2, 3, 3, 4];   // arrow presses per station (each press plays one part, then stops)
+const DUR = [3, 4, 6, 6, 30, 8, 10, 12, 18];   // seconds per station
+const SUBS = [1, 1, 2, 2, 10, 2, 3, 3, 4];   // arrow presses per station (each press plays one part, then stops)
 const SUB = 4;   // fallback only   // seconds per station at 1x
 const total = DUR.reduce((a,b)=>a+b,0);
 let time = 0, playing = true, speed = 1, last = performance.now(); let hold = true, held = false, playTo = null;   // step mode is the only mode (no play/pause)
