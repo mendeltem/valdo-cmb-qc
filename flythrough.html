@@ -244,7 +244,7 @@ function setUnet(o){ encB.concat(decB).forEach(b => b.material.opacity = o); ski
 
 // training set-up (station 5): tiles of real slices, a compact U-Net block, outputs next to labels, a loss bar, the 3D CNN with candidate patches
 const train = new THREE.Group(); scene.add(train); train.position.x = stationX(5);
-const TT_W = 1.0; const tTex = {};
+const TT_W = 1.25; const tTex = {};
 TRAIN.forEach((t, i) => { tTex[i] = { img: loader.load(t.img), lab: loader.load(t.lab), prob: loader.load(t.prob), patches: t.patches.map(q => loader.load(q.img)) }; });
 function tile(i, kind){ const t = TRAIN[i]; const h = TT_W * t.h / t.w; const g = new THREE.Group();
   const base = new THREE.Mesh(new THREE.PlaneGeometry(TT_W, h), new THREE.MeshBasicMaterial({map:tTex[i].img, transparent:true, opacity:0, side:THREE.DoubleSide})); g.add(base);
@@ -306,7 +306,7 @@ function render(now){
   const tt = seg(t, 0.25, 1);  // local progress after arrival
   drawStep(i, tt, t);
   // camera
-  const target = new THREE.Vector3(x + (i===4 ? 0.5 : 0.9), 0.3, 0); const wide = (i === 3 && view === 'axial') ? 1.35 : 1;
+  const target = new THREE.Vector3(x + (i===4 ? 1.2 : i===5 ? 1.6 : 0.9), 0.3, 0); const wide = (view === 'axial') ? ((i === 3) ? 1.35 : (i === 4) ? 1.9 : (i === 5) ? 1.6 : 1) : ((i === 4 || i === 5) ? 1.3 : 1);
   const orbit = new THREE.Vector3(Math.sin(orb.yaw)*Math.cos(orb.pitch), Math.sin(orb.pitch), Math.cos(orb.yaw)*Math.cos(orb.pitch)).multiplyScalar(orb.dist * wide);
   camera.position.lerp(target.clone().add(orbit), 0.08); camera.up.set(0, view==='axial' ? 0 : 1, view==='axial' ? -1 : 0); camera.lookAt(target);
   // station rings: current one glows
@@ -341,14 +341,14 @@ function drawStep(i, u, raw){
     const enter = seg(k, 0, 0.08), leave = seg(k, 0.92, 1), walk = seg(k, 0.08, 0.92);
     // the real stack flies in and fades as the first block appears
     fine.visible = frst.visible = enter < 1; const sh = enter; fine.scale.set(1-0.4*sh,1-0.4*sh,1-0.4*sh); frst.scale.copy(fine.scale);
-    fine.position.set(-5.0 + (encB[0].position.x + 5.0)*sh, encB[0].position.y*sh, 0); frst.position.set(fine.position.x + 0.3, fine.position.y, 0.3);
+    fine.position.set(-7.5 + (encB[0].position.x + 7.5)*sh, encB[0].position.y*sh, 0); frst.position.set(fine.position.x + 0.3, fine.position.y, 0.3);
     setStackOpacity(fine, 0.9*(1-enter)); setStackOpacity(frst, 0.9*(1-enter));
     const pos = walk * (nodes.length - 1); const a = Math.min(nodes.length - 2, Math.floor(pos)), f = pos - a;
     const la = lvlOf(a), lb = lvlOf(a + 1); const lvl = f < 0.5 ? la : lb; const sp = SPATIAL[la] + (SPATIAL[lb] - SPATIAL[la]) * ease(f);
     const P = nodes[a].clone().lerp(nodes[a+1], ease(f)); feat.position.set(unet.position.x + P.x, P.y + 0.25, P.z);
     setFeat(lvl, sp, o * enter * (1 - leave), a >= nE - 1);
     box.material.opacity = 0; maskShell.material.opacity = 0;
-    prob.visible = leave > 0; setStackOpacity(prob, 0.9*leave); prob.position.set(4.2 - 4.2*leave + 1.0, 0, 0); probLab.position.set(vol.position.x + 1.0, vol.position.y + 0.6, vol.position.z - TD*0.5 - 2.4); probLab.material.opacity = leave; return; }
+    prob.visible = leave > 0; setStackOpacity(prob, 0.9*leave); prob.position.set(decB[0].position.x + 1.2 + 5.0*leave, 0, 0); probLab.position.set(vol.position.x + prob.position.x, vol.position.y + 0.6, vol.position.z - TD*0.5 - 2.4); probLab.material.opacity = leave; return; }
   if (i === 5) { // training: real slices go one by one into the U-Net, the output lands next to its label, the loss falls; then candidate patches train the 3D CNN
     const o = fadeIn(seg(u, 0, 0.1)); const n = TRAIN.length; const nP = patchTiles.length;
     unetBlock.material.opacity = o; unetBlockLab.material.opacity = o; lossBar.material.opacity = o; lossLab.material.opacity = o;
@@ -357,11 +357,11 @@ function drawStep(i, u, raw){
     setLossLabel(`epoch ${ep} / 60 · loss ${loss.toFixed(2)} · 800 patches per epoch`);
     TRAIN.forEach((t, q) => {
       const h = TT_W * t.h / t.w; const a = q / n, b = (q + 1) / n; const k = seg(phaseA, a, b);        // this tile's turn
-      const row = -2.9 + q * 1.15;                                                                  // queue of inputs on the left, bottom row
+      const row = -3.6 + q * 1.45;                                                                  // queue of inputs on the left, bottom row
       const fly = ease(seg(k, 0, 0.45)); const outK = seg(k, 0.5, 1);
       const pIn = new THREE.Vector3(row - 1.5, -1.6, 1.2).lerp(unetBlock.position, fly);
       tImg[q].position.copy(pIn); tImg[q].scale.setScalar(1 - 0.6 * fly); tileOpacity(tImg[q], o * (1 - seg(k, 0.4, 0.5)) * (phaseA >= a || q === 0 ? 1 : 1));
-      const col = -2.9 + q * 1.15;                                                                  // label above, output below, top row
+      const col = -3.6 + q * 1.45;                                                                  // label above, output below, top row
       tLab[q].position.set(col, 1.9 + h * 0.0, -0.8); tileOpacity(tLab[q], o * fadeIn(outK * 2));
       tOut[q].position.set(col, 1.9 - h - 0.1, -0.8); tileOpacity(tOut[q], o * fadeIn(outK * 2));
       unetBlock.material.emissiveIntensity = (k > 0.4 && k < 0.55) ? 1.2 : 0.3;
@@ -371,7 +371,7 @@ function drawStep(i, u, raw){
       const home = new THREE.Vector3(2.2 + (q % 3) * 0.5, -1.2 - Math.floor(q / 3) * 0.5, 1.0); const P = home.clone().lerp(cnnBlock.position, fly * (1 - back)); g.position.copy(P);
       tileOpacity(g, o * fadeIn(phaseB * 4)); const c = k > 0.5 ? (g.userData.kind === 'true' ? 0x4ade80 : 0xf87171) : 0x8fa3d9; g.children[1].material.color.set(c);
       cnnBlock.material.emissiveIntensity = (k > 0.4 && k < 0.6) ? 1.2 : 0.3; });
-    fine.visible = true; setStackOpacity(fine, 0.9); box.material.opacity = 0.7; box.scale.set(0.86, 1, 0.86); vol.position.y = 0.3; return; }
+    fine.visible = false; box.material.opacity = 0; vol.position.y = 0.3; return; }
   if (i === 6) { fine.visible = true; box.material.opacity = 0.7; box.scale.set(0.86,1,0.86); const k = seg(u, 0.05, 0.75); const steps = 12; const s = Math.floor(k*steps), f = k*steps - s; const col = s % 4, row = Math.floor(s/4); win.position.set(-1.2 + col*0.8, -0.9 + row*0.9, -1.4 + (f*2.6)); win.material.opacity = k < 1 ? 0.9 : 0; ghost.position.copy(win.position); ghost.material.opacity = k<1 ? 0.12 : 0; const m = seg(u, 0.75, 1); prob.visible = m > 0; setStackOpacity(prob, 0.9*m); setStackOpacity(fine, 0.9*(1-m)); probLab.position.set(vol.position.x + 0.9, vol.position.y + 0.6, vol.position.z - TD*0.5 - 2.4); probLab.material.opacity = m; return; }
   if (i === 7) { prob.visible = u < 0.3; setStackOpacity(prob, 0.9*(1-seg(u,0.1,0.3))); probLab.position.set(vol.position.x + 0.9, vol.position.y + 0.6, vol.position.z - TD*0.5 - 2.4); probLab.material.opacity = 1-seg(u,0.1,0.3); csf.visible = u > 0.55; setStackOpacity(csf, 0.6*seg(u,0.55,0.75)*(1-seg(u,0.92,1))); box.material.opacity = 0.5; box.scale.set(0.86,1,0.86);
     fine.visible = true; setStackOpacity(fine, 0.9);
