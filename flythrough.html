@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>CMB Pipeline Flythrough</title>
-<!-- Standalone file for the lecture: three.js r128 (MIT) embedded, runs offline by double-click. Image: VALDO 2021 Task 2 (CC BY-NC-SA 4.0). Keys: -> or clicker = next, <- back, space pause, F full screen, P talk mode, H hold per station, A axial/3D. -->
+<!-- Standalone file for the lecture: three.js r128 (MIT) embedded, runs offline by double-click. Image: VALDO 2021 Task 2 (CC BY-NC-SA 4.0). Keys: -> or clicker = next sub-step, <- back, space = continuous play, F full screen, P talk mode, H step mode on/off, A axial/3D. -->
 </head>
 <body>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -58,12 +58,12 @@ body.talk #steps,body.talk #hint,body.talk #top .sub{display:none}body.talk #top
     <button id="next" title="→">step ▶</button>
     <button id="speed" title="speed">1×</button>
     <button id="view" title="A: view">view: 3D</button>
-    <button id="hold" aria-pressed="true" title="H: hold after every station (lecture with a clicker)">⏯ Hold per station</button>
+    <button id="hold" aria-pressed="true" title="H: step mode — → plays one of four sub-steps and stops, ← goes back one; off = continuous play">⏯ Step mode</button>
     <button id="talk" aria-pressed="false" title="P: large captions, fewer controls">Talk mode</button>
     <button id="fs" title="F: full screen">⛶</button>
   </div>
 </div>
-<div id="hint">drag = rotate · wheel = zoom · → / clicker = next · ← back · space pause · F full screen · P talk mode</div>
+<div id="hint">→ / clicker = next sub-step · ← back · space = continuous play · A axial/3D · F full screen · P talk mode</div>
 <div id="bottom">
   <div id="steps"></div>
   <div id="cap"><div class="k" id="ck"></div><h2 id="ch"></h2><p id="cp"></p><div class="m" id="cm"></div><div id="holdmark"></div></div>
@@ -102,7 +102,7 @@ const T = {
  },
  en: {
   title:'CMB Pipeline Flythrough', sub:'One T2* volume travelling through the ten stations of the microbleed chain · image: VALDO 2021 Task 2 (CC BY-NC-SA 4.0), one real axial slice, the other slices are symbolic',
-  hint:'view: axial or 3D (key A) · drag = rotate · wheel = zoom · → / clicker = next · ← back · space pause · F fullscreen · P talk mode', play:'▶ Play', pause:'⏸ Pause', step:'step', axial:'view: axial', three:'view: 3D', held:'end of station — → or clicker: continue', hold:'⏯ Hold per station', talk:'Talk mode',
+  hint:'→ / clicker = next sub-step · ← back · space = continuous play · A axial/3D · F full screen · P talk mode · drag rotate · wheel zoom', play:'▶ Play', pause:'⏸ Pause', step:'step', axial:'view: axial', three:'view: 3D', held:'end of station — → or clicker: next station', hold:'⏯ Step mode', talk:'Talk mode',
   steps:[
    ['Input','One T2* or SWI volume and a brain mask','A case arrives as a thick slab of slices: e.g. 512 × 512 × 35 voxels at 0.45 × 0.45 × 4 mm. The mask delimits the brain; it is delivered with the data, HD-BET only when it is missing.','512 × 512 × 35 · 0.45 × 0.45 × 4 mm'],
    ['Intensity','Bias field removed, then an inverted scale','FSL FAST -B corrects the slow coil shading once per case. Then the image is put on 1 − I / max(I) inside the mask: microbleeds become bright.','FSL FAST -B · 1 − I/max(I)'],
@@ -275,9 +275,10 @@ const cnnLab = labelSprite('3D CNN', {size:24, color:'#e8ecf7', bg:'rgba(0,0,0,0
 let table = null; function buildTable(){ if (table) scene.remove(table); const rows = ['#   volume     location   p max'].concat(REAL.table.map((t,i) => `${i+1}   ${String(t.mm3.toFixed(1)).padStart(5)} mm³   ${t.lage.padEnd(8)}  ${t.p.toFixed(2)}`)); rows.push(`–   missed by the model: ${REAL.fn.length} (reference only)`); rows.push(`×   candidate below the slice rejected: vessel (p ${REAL.fp_example.pmax.toFixed(2)})`); table = tableSprite(rows); table.position.set(stationX(9)+4.6, 1.2, 0); table.material.opacity = 0; scene.add(table); }
 
 // ------------------------------------------------------------------ timeline
-const DUR = [5, 6, 5.5, 5, 8, 7, 6.5, 8, 9, 14];   // seconds per station at 1x
+const DUR = [7, 9, 8, 7.5, 12, 11, 10, 12, 14, 21];   // seconds per station at 1x; in step mode each station is walked in SUB sub-steps
+const SUB = 4;   // seconds per station at 1x
 const total = DUR.reduce((a,b)=>a+b,0);
-let time = 0, playing = true, speed = 1, last = performance.now(); let hold = true, held = false;
+let time = 0, playing = true, speed = 1, last = performance.now(); let hold = true, held = false, playTo = null;
 try { hold = localStorage.getItem('cmbfly_hold') !== '0'; } catch(e){}
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 if (reduced) playing = false;
@@ -294,7 +295,8 @@ function render(now){
   if (playing) {
     const [i0] = stepAt(time); const end = DUR.slice(0, i0+1).reduce((a,b)=>a+b,0) - 0.001;
     time += dt * speed;
-    if (hold && time >= end) { time = end; playing = false; held = true; updatePlayBtn(); }
+    if (playTo !== null && time >= playTo) { time = playTo; playTo = null; playing = false; held = true; updatePlayBtn(); }
+    else if (hold && time >= end) { time = end; playing = false; held = true; updatePlayBtn(); }
     if (time >= total) { time = total - 0.001; playing = false; held = true; updatePlayBtn(); }
   }
   const [i, t] = stepAt(time);
@@ -405,11 +407,13 @@ function drawStep(i, u, raw){
 const stepsBox = document.getElementById('steps');
 function buildStepButtons(){ stepsBox.innerHTML = ''; T[lang].steps.forEach((s,i) => { const b = document.createElement('button'); b.textContent = i + ' ' + s[0]; b.id = 'st'+i; b.onclick = () => jump(i); stepsBox.appendChild(b); }); }
 function caption(i){ const s = T[lang].steps[i]; document.getElementById('ck').textContent = 'Station ' + i + ' / 9'; document.getElementById('ch').textContent = s[0] + ' · ' + s[1]; document.getElementById('cp').textContent = s[2]; document.getElementById('cm').textContent = s[3]; [...stepsBox.children].forEach((b,q) => { b.classList.toggle('cur', q===i); b.classList.toggle('done', q<i); }); try { document.getElementById('st'+i).scrollIntoView({inline:'center', block:'nearest', behavior: reduced ? 'auto' : 'smooth'}); } catch(e){} }
-function jump(i){ time = DUR.slice(0,i).reduce((a,b)=>a+b,0) + 0.001; cur = -1; held = false; playing = true; updatePlayBtn(); }
-function updatePlayBtn(){ const b = document.getElementById('play'); b.textContent = playing ? T[lang].pause : T[lang].play; b.setAttribute('aria-pressed', playing ? 'true' : 'false'); document.body.classList.toggle('held', held && !playing); document.getElementById('holdmark').textContent = T[lang].held; }
-document.getElementById('play').onclick = () => { if (time >= total - 0.01) time = 0; if (held) { held = false; const [i] = stepAt(time); if (i < N-1) jump(i+1); else time = 0; } playing = !playing; updatePlayBtn(); };
-document.getElementById('prev').onclick = () => jump(Math.max(0, stepAt(time)[0] - (stepAt(time)[1] < 0.15 ? 1 : 0)));
-document.getElementById('next').onclick = () => { const [i, t] = stepAt(time); if (hold && playing && t < 0.999) { time = DUR.slice(0,i+1).reduce((a,b)=>a+b,0) - 0.002; return; } jump(Math.min(N-1, i + 1)); };
+const startOf = i => DUR.slice(0,i).reduce((a,b)=>a+b,0);
+function jump(i){ time = startOf(i) + 0.001; cur = -1; held = false; playing = true; playTo = hold ? startOf(i) + DUR[i] / SUB - 0.001 : null; updatePlayBtn(); }
+function subOf(){ const [i, t] = stepAt(time); return [i, t, Math.min(SUB, Math.floor(t * SUB + 1e-4))]; }
+function updatePlayBtn(){ const b = document.getElementById('play'); b.textContent = playing ? T[lang].pause : T[lang].play; b.setAttribute('aria-pressed', playing ? 'true' : 'false'); document.body.classList.toggle('held', held && !playing); const [si, st, sk] = subOf(); document.getElementById('holdmark').textContent = (sk >= SUB ? T[lang].held : `step ${sk} / ${SUB} of this station — → continues, ← back`); }
+document.getElementById('play').onclick = () => { if (time >= total - 0.01) time = 0; playTo = null; held = false; playing = !playing; updatePlayBtn(); };   // continuous play, ignores the sub-steps
+document.getElementById('prev').onclick = () => { const [i, t, k] = subOf(); if (hold && k >= 1 && t > 0.02) { time = startOf(i) + DUR[i] * (k - 1) / SUB + 0.001; playTo = null; playing = false; held = true; cur = -1; updatePlayBtn(); return; } jump(Math.max(0, i - (t < 0.15 ? 1 : 0))); };
+document.getElementById('next').onclick = () => { const [i, t, k] = subOf(); if (hold) { if (playing && playTo !== null) { time = playTo; return; } if (k < SUB && t < 0.999) { playTo = startOf(i) + DUR[i] * (k + 1) / SUB - 0.001; held = false; playing = true; updatePlayBtn(); return; } } jump(Math.min(N-1, i + 1)); };
 document.getElementById('hold').onclick = e => { hold = !hold; e.target.setAttribute('aria-pressed', hold ? 'true' : 'false'); try { localStorage.setItem('cmbfly_hold', hold ? '1' : '0'); } catch(err){} if (!hold && held) { held = false; playing = true; updatePlayBtn(); } };
 document.getElementById('talk').onclick = e => { const on = document.body.classList.toggle('talk'); e.target.setAttribute('aria-pressed', on ? 'true' : 'false'); try { localStorage.setItem('cmbfly_talk', on ? '1' : '0'); } catch(err){} };
 document.getElementById('fs').onclick = () => { const el = document.documentElement; if (document.fullscreenElement) { document.exitFullscreen && document.exitFullscreen(); } else if (el.requestFullscreen) { el.requestFullscreen().catch(()=>{}); } };
@@ -431,6 +435,7 @@ renderer.domElement.addEventListener('wheel', e => { e.preventDefault(); orb.dis
 window.addEventListener('resize', () => { renderer.setSize(stage.clientWidth, stage.clientHeight); camera.aspect = stage.clientWidth/stage.clientHeight; camera.updateProjectionMatrix(); });
 
 applyLang();
+if (hold) playTo = DUR[0] / SUB - 0.001;
 document.getElementById('hold').setAttribute('aria-pressed', hold ? 'true' : 'false');
 try { if (localStorage.getItem('cmbfly_talk') === '1') { document.body.classList.add('talk'); document.getElementById('talk').setAttribute('aria-pressed','true'); } } catch(e){}
 camera.position.set(stationX(0)+8, 5, 14);
