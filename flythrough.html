@@ -243,9 +243,9 @@ const FEAT_TEX = [210, 190, 170, 40, 25].map((h, i) => featureTexture(h, 7 + i*1
 const SPATIAL = [1, 0.7, 0.5, 0.36, 0.26], SLABS = [1, 2, 4, 8, 16];
 const feat = new THREE.Group(); scene.add(feat);
 const slabs = []; for (let j=0;j<16;j++){ const m = new THREE.Mesh(new THREE.BoxGeometry(TW*0.9, 0.11, TD*0.9), new THREE.MeshBasicMaterial({map:FEAT_TEX[0], transparent:true, opacity:0})); feat.add(m); slabs.push(m); const e = new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry), new THREE.LineBasicMaterial({color:0xdfe7ff, transparent:true, opacity:0})); m.add(e); }
-const inLab = labelSprite('input: 2 channels (T2*, FRST) · full resolution', {size:22, color:'#e8ecf7', bg:'rgba(18,26,48,0.8)', scale:0.009}); scene.add(inLab); inLab.material.opacity = 0;
-const featLab = labelSprite('', {size:24, color:'#e8ecf7', bg:'rgba(18,26,48,0.75)', scale:0.01}); feat.add(featLab); featLab.material.opacity = 0;
-function setFeat(lvl, sp, o, dec){ const n = SLABS[lvl]; slabs.forEach((m, j) => { const on = j < n; m.material.opacity = on ? o : 0; m.children[0].material.opacity = on ? o*0.9 : 0; m.material.map = FEAT_TEX[lvl]; m.position.y = j*0.14 - (n-1)*0.07; }); feat.scale.set(sp, 1, sp); featLab.position.y = n*0.14/2 + 0.45; featLab.material.opacity = o; const ch = 32 * n; const txt = `${ch} ${lang==='de'?'Kanäle':'channels'} · ${lvl===0 ? (lang==='de'?'volle Auflösung':'full resolution') : '1/'+Math.pow(2,lvl)+' in-plane'}`; if (featLab.userData.txt !== txt) { featLab.userData.txt = txt; const nl = labelSprite(txt, {size:24, color:'#e8ecf7', bg:'rgba(18,26,48,0.75)', scale:0.01}); featLab.material.map = nl.material.map; featLab.scale.copy(nl.scale); featLab.material.needsUpdate = true; } }
+const inLab = labelSprite('input · 2 channels', {size:22, color:'#e8ecf7', bg:'rgba(18,26,48,0.85)', scale:0.0065}); scene.add(inLab); inLab.material.opacity = 0;
+const featLab = labelSprite('', {size:22, color:'#e8ecf7', bg:'rgba(18,26,48,0.85)', scale:0.0065}); scene.add(featLab); featLab.material.opacity = 0;   // not inside feat: its scale must not squeeze the label
+function setFeat(lvl, sp, o, dec){ const n = SLABS[lvl]; slabs.forEach((m, j) => { const on = j < n; m.material.opacity = on ? o : 0; m.children[0].material.opacity = on ? o*0.9 : 0; m.material.map = FEAT_TEX[lvl]; m.position.y = j*0.14 - (n-1)*0.07; }); feat.scale.set(sp, 1, sp); featLab.position.set(feat.position.x, feat.position.y + n*0.14/2 + 0.5, feat.position.z - TD*0.45*sp - 0.3); featLab.material.opacity = o; const ch = 32 * n; const txt = `${ch} ${lang==='de'?'Kanäle':'channels'} · ${lvl===0 ? (lang==='de'?'volle Auflösung':'full resolution') : '1/'+Math.pow(2,lvl)+' in-plane'}`; if (featLab.userData.txt !== txt) { featLab.userData.txt = txt; const nl = labelSprite(txt, {size:22, color:'#e8ecf7', bg:'rgba(18,26,48,0.85)', scale:0.0065}); featLab.material.map = nl.material.map; featLab.scale.copy(nl.scale); featLab.material.needsUpdate = true; } }
 function setUnet(o){ encB.concat(decB).forEach(b => b.material.opacity = o); skips.forEach(s => s.material.opacity = o*0.8); unet.children.filter(c=>c.userData.unetLabel).forEach(l => l.material.opacity = o); }
 
 // training set-up (station 5): tiles of real slices, a compact U-Net block, outputs next to labels, a loss bar, the 3D CNN with candidate patches
@@ -356,7 +356,7 @@ function drawStep(i, u, raw){
     fine.visible = frst.visible = true; fine.scale.setScalar(0.5); frst.scale.setScalar(0.5);
     fine.position.copy(inPos); frst.position.set(inPos.x + 0.35, inPos.y - 0.15, inPos.z + 0.35);
     setStackOpacity(fine, 0.95); setStackOpacity(frst, 0.6);
-    inLab.position.set(vol.position.x + inPos.x, vol.position.y + inPos.y + 1.6, vol.position.z + inPos.z); inLab.material.opacity = o;
+    inLab.position.set(vol.position.x + inPos.x, vol.position.y + inPos.y + 1.2, vol.position.z + inPos.z - TD*0.32 - 0.35); inLab.material.opacity = o;
     const pos = walk * (nodes.length - 1); const a = Math.min(nodes.length - 2, Math.floor(pos)), f = pos - a;
     const la = lvlOf(a), lb = lvlOf(a + 1); const lvl = f < 0.5 ? la : lb; const sp = SPATIAL[la] + (SPATIAL[lb] - SPATIAL[la]) * ease(f);
     let P = nodes[a].clone().lerp(nodes[a+1], ease(f));
