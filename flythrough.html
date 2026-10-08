@@ -171,9 +171,10 @@ function makeStack(n, h, kind, base){   // base: 'inv' (image under an overlay),
 const thick = makeStack(9, 3.0, 'bias', null);     // 0.45 x 0.45 x 4 mm: few thick slices
 const fine  = makeStack(24, 3.0, 'inv', null);     // 0.5 x 0.5 x 1 mm, cropped
 const frst  = makeStack(24, 3.0, 'frst', null);
-const prob  = makeStack(24, 3.0, 'prob', 'inv');
+const prob  = makeStack(24, 3.0, 'prob', null);
 const mask  = makeStack(24, 3.0, 'mask', 'inv');
 const csf   = makeStack(24, 3.0, 'csf', 'inv');
+const probLab = labelSprite('U-Net output: probability map, viridis 0 (violet) → 1 (yellow), per voxel', {size:22, color:'#e8ecf7', bg:'rgba(18,26,48,0.85)', scale:0.009}); scene.add(probLab); probLab.material.opacity = 0;
 [thick, fine, frst, prob, mask, csf].forEach(s => { vol.add(s); s.visible = false; });
 const box = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(TW*1.12, 3.0, TD*1.12)), new THREE.LineBasicMaterial({color:0x60a5fa, transparent:true, opacity:0.7})); vol.add(box);
 const maskShell = { material: { opacity: 0 } };   // the former wireframe sphere is gone; the box edges mark the brain mask
@@ -218,7 +219,7 @@ const unet = new THREE.Group(); scene.add(unet); unet.position.x = stationX(4);
 const LEVELS = [[32,2.6,0],[64,1.9,-1.4],[128,1.35,-2.6],[256,0.95,-3.5],[512,0.65,-4.2]];
 const encB = [], decB = [], skips = [];
 (function(){
-  const mat = (c) => new THREE.MeshStandardMaterial({color:c, transparent:true, opacity:0.0, roughness:0.5, emissive:c, emissiveIntensity:0.15});
+  const mat = (c) => new THREE.MeshStandardMaterial({color:c, transparent:true, opacity:0.0, roughness:0.5, emissive:c, emissiveIntensity:0.15, depthWrite:false});
   LEVELS.forEach(([ch,s,y],i) => {
     const e = new THREE.Mesh(new THREE.BoxGeometry(s, s*0.55, s), mat(0x60a5fa)); e.position.set(-3.2 + i*0.9, y, 0); unet.add(e); encB.push(e);
     if (i < LEVELS.length-1) { const d = new THREE.Mesh(new THREE.BoxGeometry(s, s*0.55, s), mat(0xffb347)); d.position.set(3.2 - i*0.9, y, 0); unet.add(d); decB.push(d);
@@ -318,7 +319,7 @@ function resetAll(){
   showOnly(); setStackOpacity(thick, 0.9); thick.setKind('bias');
   box.material.opacity = 0.7; box.scale.set(1,1,1); maskShell.material.opacity = 0.18;
   spheres.forEach(s => { s.mesh.material.opacity = 0; s.mesh.material.color.set(s.color); s.mesh.material.emissive.set(s.color); s.mesh.scale.set(1,1,1); s.mesh.position.copy(s.mesh.userData.home || s.mesh.position); });
-  setUnet(0); setFeat(0, 1, 0, false); resetTrain(); rings.forEach(r => r.material.opacity = 0); vesselMark.material.opacity = 0; setCrop(cropFP, 0); setCrop(cropTP, 0); cropLabFP.material.opacity = 0; cropLabTP.material.opacity = 0; resetComp(); patches.forEach(p => p.material.opacity = 0); win.material.opacity = 0; ghost.material.opacity = 0; cnn.material.opacity = 0; cnnLab.material.opacity = 0; if (table) table.material.opacity = 0;
+  setUnet(0); setFeat(0, 1, 0, false); resetTrain(); rings.forEach(r => r.material.opacity = 0); vesselMark.material.opacity = 0; setCrop(cropFP, 0); setCrop(cropTP, 0); cropLabFP.material.opacity = 0; cropLabTP.material.opacity = 0; resetComp(); probLab.material.opacity = 0; patches.forEach(p => p.material.opacity = 0); win.material.opacity = 0; ghost.material.opacity = 0; cnn.material.opacity = 0; cnnLab.material.opacity = 0; if (table) table.material.opacity = 0;
   frst.position.set(0,0,0); fine.position.set(0,0,0); prob.position.set(0,0,0); fine.scale.set(1,1,1); frst.scale.set(1,1,1);
 }
 spheres.forEach(s => s.mesh.userData.home = s.mesh.position.clone());
@@ -334,8 +335,8 @@ function drawStep(i, u, raw){
     const o = fadeIn(seg(u, 0, 0.15)); setUnet(o); const k = seg(u, 0.15, 1); const nE = encB.length;
     const nodes = encB.map(b => b.position).concat(decB.slice().reverse().map(b => b.position));   // levels 0,1,2,3,4,3,2,1,0
     const lvlOf = a => a < nE ? a : 2*(nE-1) - a;
-    encB.forEach((b,q) => { const on = k > (q+0.5)/(2*nE); b.material.emissiveIntensity = on ? 0.9 : 0.15; b.material.opacity = o*(on?0.9:0.35); });
-    decB.forEach((b,q) => { const on = k > 0.5 + (q+0.5)/(2*nE); b.material.emissiveIntensity = on ? 0.9 : 0.15; b.material.opacity = o*(on?0.9:0.35); });
+    encB.forEach((b,q) => { const on = k > (q+0.5)/(2*nE); b.material.emissiveIntensity = on ? 0.9 : 0.15; b.material.opacity = o*(on?0.55:0.22); });
+    decB.forEach((b,q) => { const on = k > 0.5 + (q+0.5)/(2*nE); b.material.emissiveIntensity = on ? 0.9 : 0.15; b.material.opacity = o*(on?0.55:0.22); });
     skips.forEach((s,q) => { s.material.opacity = (k > 0.5 + (nE-2-q+0.5)/(2*nE)) ? 0.9 : 0.15*o; });
     const enter = seg(k, 0, 0.08), leave = seg(k, 0.92, 1), walk = seg(k, 0.08, 0.92);
     // the real stack flies in and fades as the first block appears
@@ -347,7 +348,7 @@ function drawStep(i, u, raw){
     const P = nodes[a].clone().lerp(nodes[a+1], ease(f)); feat.position.set(unet.position.x + P.x, P.y + 0.25, P.z);
     setFeat(lvl, sp, o * enter * (1 - leave), a >= nE - 1);
     box.material.opacity = 0; maskShell.material.opacity = 0;
-    prob.visible = leave > 0; setStackOpacity(prob, 0.9*leave); prob.position.set(4.2 - 4.2*leave + 1.0, 0, 0); return; }
+    prob.visible = leave > 0; setStackOpacity(prob, 0.9*leave); prob.position.set(4.2 - 4.2*leave + 1.0, 0, 0); probLab.position.set(vol.position.x + 1.0, vol.position.y + 2.0, vol.position.z); probLab.material.opacity = leave; return; }
   if (i === 5) { // training: real slices go one by one into the U-Net, the output lands next to its label, the loss falls; then candidate patches train the 3D CNN
     const o = fadeIn(seg(u, 0, 0.1)); const n = TRAIN.length; const nP = patchTiles.length;
     unetBlock.material.opacity = o; unetBlockLab.material.opacity = o; lossBar.material.opacity = o; lossLab.material.opacity = o;
@@ -371,8 +372,8 @@ function drawStep(i, u, raw){
       tileOpacity(g, o * fadeIn(phaseB * 4)); const c = k > 0.5 ? (g.userData.kind === 'true' ? 0x4ade80 : 0xf87171) : 0x8fa3d9; g.children[1].material.color.set(c);
       cnnBlock.material.emissiveIntensity = (k > 0.4 && k < 0.6) ? 1.2 : 0.3; });
     fine.visible = true; setStackOpacity(fine, 0.9); box.material.opacity = 0.7; box.scale.set(0.86, 1, 0.86); vol.position.y = 0.3; return; }
-  if (i === 6) { fine.visible = true; box.material.opacity = 0.7; box.scale.set(0.86,1,0.86); const k = seg(u, 0.05, 0.75); const steps = 12; const s = Math.floor(k*steps), f = k*steps - s; const col = s % 4, row = Math.floor(s/4); win.position.set(-1.2 + col*0.8, -0.9 + row*0.9, -1.4 + (f*2.6)); win.material.opacity = k < 1 ? 0.9 : 0; ghost.position.copy(win.position); ghost.material.opacity = k<1 ? 0.12 : 0; const m = seg(u, 0.75, 1); prob.visible = m > 0; setStackOpacity(prob, 0.9*m); setStackOpacity(fine, 0.9*(1-m)); return; }
-  if (i === 7) { prob.visible = u < 0.3; setStackOpacity(prob, 0.9*(1-seg(u,0.1,0.3))); csf.visible = u > 0.55; setStackOpacity(csf, 0.6*seg(u,0.55,0.75)*(1-seg(u,0.92,1))); box.material.opacity = 0.5; box.scale.set(0.86,1,0.86);
+  if (i === 6) { fine.visible = true; box.material.opacity = 0.7; box.scale.set(0.86,1,0.86); const k = seg(u, 0.05, 0.75); const steps = 12; const s = Math.floor(k*steps), f = k*steps - s; const col = s % 4, row = Math.floor(s/4); win.position.set(-1.2 + col*0.8, -0.9 + row*0.9, -1.4 + (f*2.6)); win.material.opacity = k < 1 ? 0.9 : 0; ghost.position.copy(win.position); ghost.material.opacity = k<1 ? 0.12 : 0; const m = seg(u, 0.75, 1); prob.visible = m > 0; setStackOpacity(prob, 0.9*m); setStackOpacity(fine, 0.9*(1-m)); probLab.position.set(vol.position.x, vol.position.y + 2.0, vol.position.z); probLab.material.opacity = m; return; }
+  if (i === 7) { prob.visible = u < 0.3; setStackOpacity(prob, 0.9*(1-seg(u,0.1,0.3))); probLab.position.set(vol.position.x, vol.position.y + 2.0, vol.position.z); probLab.material.opacity = 1-seg(u,0.1,0.3); csf.visible = u > 0.55; setStackOpacity(csf, 0.6*seg(u,0.55,0.75)*(1-seg(u,0.92,1))); box.material.opacity = 0.5; box.scale.set(0.86,1,0.86);
     fine.visible = true; setStackOpacity(fine, 0.9);
     spheres.forEach(s => { const o = fadeIn(seg(u,0.15,0.3)); const pulse = 1 + 0.15*Math.sin(u*40); s.mesh.material.opacity = o; s.mesh.scale.set(pulse,pulse,pulse); }); vesselMark.material.opacity = 0.9 * fadeIn(seg(u, 0.5, 0.7)); return; }
   if (i === 8) { // second stage: each candidate (image, FRST, probability around it) goes into the 3D CNN; a microbleed comes back green, the vessel red
