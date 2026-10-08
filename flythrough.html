@@ -332,7 +332,7 @@ spheres.forEach(s => s.mesh.userData.home = s.mesh.position.clone());
 function drawStep(i, u, raw){
   resetAll();
   const fadeIn = v => clamp01(v);
-  if (i === 0) { thick.visible = true; setStackOpacity(thick, 0.9 * fadeIn(u*2)); box.material.opacity = 0.7 * fadeIn(u*2); maskShell.material.opacity = 0.18 * fadeIn((u-0.4)*2); return; }
+  if (i === 0) { thick.visible = true; setStackOpacity(thick, 0.9); box.material.opacity = 0.7; return; }   // the input is there from the first frame (a paused step 0 must not be empty)
   if (i === 1) { thick.visible = true; const flip = u > 0.55; thick.setKind(flip ? 'inv' : (u > 0.3 ? 'raw' : 'bias')); setStackOpacity(thick, 0.9); return; }
   if (i === 2) { const k = ease(seg(u, 0.1, 0.7)); thick.visible = k < 0.5; fine.visible = k >= 0.5; setStackOpacity(thick, 0.9*(1-k*2)); setStackOpacity(fine, 0.9*clamp01((k-0.5)*2)); box.scale.set(1 - 0.14*k, 1, 1 - 0.14*k); maskShell.material.opacity = 0.18*(1-k); thick.setKind('inv'); return; }
   if (i === 3) { fine.visible = frst.visible = true; const k = ease(seg(u, 0.1, 0.6)); fine.position.x = -(TW*0.5 + 0.45)*k; frst.position.x = (TW*0.5 + 0.45)*k; setStackOpacity(frst, 0.9*k); box.scale.set(0.86,1,0.86); box.material.opacity = 0.7*(1-k); maskShell.material.opacity = 0; return; }
