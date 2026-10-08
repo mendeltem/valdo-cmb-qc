@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>CMB Pipeline Flythrough</title>
-<!-- Standalone file for the lecture: three.js r128 (MIT) embedded, runs offline by double-click. Images: VALDO 2021 Task 2 (CC BY-NC-SA 4.0), five subjects. Keys: -> or clicker = next sub-step, <- back, up/down = other subject, space = continuous play, F full screen, P talk mode, H step mode, A axial/3D. -->
+<!-- Standalone file for the lecture: three.js r128 (MIT) embedded, runs offline by double-click. Images: VALDO 2021 Task 2 (CC BY-NC-SA 4.0), five subjects. Keys: -> / space / clicker = next step, <- back, up/down = other subject, F full screen, P talk mode, A axial/3D. -->
 </head>
 <body>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -53,18 +53,18 @@ body.talk #steps,body.talk #hint,body.talk #top .sub{display:none}body.talk #top
 <div id="top">
   <div><h1 id="t1">CMB Pipeline Flythrough</h1><div class="sub" id="t2">One T2* volume travelling through the ten stations of the microbleed chain</div></div>
   <div id="ctl">
-    <button id="play" aria-pressed="true" title="space">⏸ Pause</button>
+    <button id="play" hidden aria-pressed="true" title="space">⏸ Pause</button>
     <button id="prev" title="←">◀ step</button>
     <button id="next" title="→">step ▶</button>
-    <button id="speed" title="speed">1×</button>
+    <button id="speed" hidden title="speed">1×</button>
     <button id="view" title="A: view">view: 3D</button>
-    <button id="hold" aria-pressed="true" title="H: step mode — → plays one of four sub-steps and stops, ← goes back one; off = continuous play">⏯ Step mode</button>
+    <button id="hold" hidden aria-pressed="true" title="H: step mode — → plays one of four sub-steps and stops, ← goes back one; off = continuous play">⏯ Step mode</button>
     <button id="talk" aria-pressed="false" title="P: large captions, fewer controls">Talk mode</button>
     <button id="subjup" title="↑: previous subject">▲ subject</button><button id="subjdown" title="↓: next subject">subject ▼</button>
     <button id="fs" title="F: full screen">⛶</button>
   </div>
 </div>
-<div id="hint">→ / clicker = next sub-step · ← back · space = continuous play · A axial/3D · F full screen · P talk mode</div>
+<div id="hint">→ / clicker = next sub-step · ← back · space = next · A axial/3D · F full screen · P talk mode</div>
 <div id="bottom">
   <div id="steps"></div>
   <div id="cap"><div class="k" id="ck"></div><h2 id="ch"></h2><p id="cp"></p><div class="m" id="cm"></div><div id="holdmark"></div></div>
@@ -103,7 +103,7 @@ const T = {
  },
  en: {
   title:'CMB Pipeline Flythrough', sub:'One T2* volume travelling through the ten stations of the microbleed chain · image: VALDO 2021 Task 2 (CC BY-NC-SA 4.0), one real axial slice, the other slices are symbolic',
-  hint:'→ / clicker = next sub-step · ← back · ↑ ↓ = other subject · space = continuous play · A axial/3D · F full screen · P talk mode', play:'▶ Play', pause:'⏸ Pause', step:'step', axial:'view: axial', three:'view: 3D', held:'end of station — → or clicker: next station', hold:'⏯ Step mode', talk:'Talk mode',
+  hint:'→ / clicker = next sub-step · ← back · ↑ ↓ = other subject · space = next · A axial/3D · F full screen · P talk mode', play:'▶ Play', pause:'⏸ Pause', step:'step', axial:'view: axial', three:'view: 3D', held:'end of station — → or clicker: next station', hold:'⏯ Step mode', talk:'Talk mode',
   steps:[
    ['Input','One T2* or SWI volume and a brain mask','A case arrives as a thick slab of slices: e.g. 512 × 512 × 35 voxels at 0.45 × 0.45 × 4 mm. The mask delimits the brain; it is delivered with the data, HD-BET only when it is missing.','512 × 512 × 35 · 0.45 × 0.45 × 4 mm'],
    ['Intensity','Bias field removed, then an inverted scale','FSL FAST -B corrects the slow coil shading once per case. Then the image is put on 1 − I / max(I) inside the mask: microbleeds become bright.','FSL FAST -B · 1 − I/max(I)'],
@@ -281,8 +281,8 @@ let table = null; function buildTable(){ if (table) scene.remove(table); const r
 const DUR = [7, 9, 8, 7.5, 12, 11, 10, 12, 14, 21];   // seconds per station at 1x; in step mode each station is walked in SUB sub-steps
 const SUB = 4;   // seconds per station at 1x
 const total = DUR.reduce((a,b)=>a+b,0);
-let time = 0, playing = true, speed = 1, last = performance.now(); let hold = true, held = false, playTo = null;
-try { hold = localStorage.getItem('cmbfly_hold') !== '0'; } catch(e){}
+let time = 0, playing = true, speed = 1, last = performance.now(); let hold = true, held = false, playTo = null;   // step mode is the only mode (no play/pause)
+
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 if (reduced) playing = false;
 const ease = t => t<0.5 ? 2*t*t : -1+(4-2*t)*t;
@@ -425,7 +425,7 @@ document.getElementById('subjup').onclick = () => switchSubject(-1); document.ge
 document.getElementById('fs').onclick = () => { const el = document.documentElement; if (document.fullscreenElement) { document.exitFullscreen && document.exitFullscreen(); } else if (el.requestFullscreen) { el.requestFullscreen().catch(()=>{}); } };
 document.getElementById('speed').onclick = e => { speed = speed === 1 ? 2 : speed === 2 ? 0.5 : 1; e.target.textContent = speed + '×'; };
 function applyLang(){ const L = T[lang]; document.getElementById('t1').textContent = L.title; document.getElementById('t2').textContent = L.sub; document.getElementById('hint').textContent = L.hint; document.getElementById('hold').textContent = L.hold; document.getElementById('talk').textContent = L.talk; updateViewBtn(); document.getElementById('prev').textContent = '◀ ' + L.step; document.getElementById('next').textContent = L.step + ' ▶'; buildStepButtons(); placeStationLabels(); if (table) { scene.remove(table); table = null; } updatePlayBtn(); cur = -1; }
-window.addEventListener('keydown', e => { if (e.target.tagName === 'INPUT') return; if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); document.getElementById('play').click(); } else if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); document.getElementById('next').click(); } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); document.getElementById('prev').click(); } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); switchSubject(e.key === 'ArrowDown' ? 1 : -1); } else if (e.key === 'f' || e.key === 'F') { document.getElementById('fs').click(); } else if (e.key === 'p' || e.key === 'P') { document.getElementById('talk').click(); } else if (e.key === 'h' || e.key === 'H') { document.getElementById('hold').click(); } else if (e.key === 'a' || e.key === 'A') { document.getElementById('view').click(); } else if (e.key === 'Home') { jump(0); } });
+window.addEventListener('keydown', e => { if (e.target.tagName === 'INPUT') return; if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); document.getElementById('next').click(); } else if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); document.getElementById('next').click(); } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); document.getElementById('prev').click(); } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); switchSubject(e.key === 'ArrowDown' ? 1 : -1); } else if (e.key === 'f' || e.key === 'F') { document.getElementById('fs').click(); } else if (e.key === 'p' || e.key === 'P') { document.getElementById('talk').click(); } else if (e.key === 'a' || e.key === 'A') { document.getElementById('view').click(); } else if (e.key === 'Home') { jump(0); } });
 
 // orbit by drag, zoom by wheel
 const VIEWS = {axial:{yaw:0.0, pitch:1.45, dist:8.5}, three:{yaw:0.55, pitch:0.32, dist:13}};
