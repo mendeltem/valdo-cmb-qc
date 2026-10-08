@@ -112,7 +112,7 @@ const T = {
    ['Intensity','Bias field removed, then an inverted scale','FSL FAST -B corrects the slow coil shading once per case. Then the image is put on 1 − I / max(I) inside the mask: microbleeds become bright.','FSL FAST -B · 1 − I/max(I)'],
    ['One grid','0.5 × 0.5 × 1.0 mm for every case, cropped to the brain','Every case lands on the same physical grid (image linear, label nearest neighbour, centre of the field of view preserved) and is cropped to the bounding box of the brain.','0.5 × 0.5 × 1.0 mm · bounding box'],
    ['Second channel','Fast radial symmetry (FRST)','Microbleeds are small round dark dots. The FRST response (four radii 2 / 3 / 4 / 6 voxels, one fixed scale per volume) highlights exactly such dots and enters as a second channel.','FRST · radii 2/3/4/6 vx'],
-   ['Network','Anisotropic 3D U-Net, 22.5 M parameters','Chosen in the arena: 32 base channels, four poolings, InstanceNorm, LeakyReLU, transposed convolutions, one sigmoid output. The first level convolves and pools in-plane only (1 × 3 × 3); from the second level on the grid is 1 mm isotropic.','32 → 64 → 128 → 256 → 512 channels'],
+   ['Network','Anisotropic 3D U-Net, 22.5 M parameters','Chosen in the arena: 32 base channels, four poolings, InstanceNorm, LeakyReLU, transposed convolutions, one sigmoid output. The first level convolves and pools in-plane only (1 × 3 × 3); from the second level on the grid is 1 mm isotropic.','one click per level: 32 → 64 → 128 → 256 → 512 channels, size halves; back up with skip connections'],
    ['Inference','Sliding window, mean of two seeds','Windows of the training size with half-window stride, overlapping predictions averaged, windows outside the brain skipped. The map is the mean of two networks with different seeds.','half stride · 2 seeds'],
    ['Post-processing','One fixed operating point and an anatomical rule','Threshold 0.3, 26-connected components. Dropped: components below 2 mm³ or above 2100 voxels (a 10 mm sphere), and components whose majority tissue label is ventricle or extracerebral CSF. No tunable parameter.','0.3 · ≥ 2 mm³ · ≤ 2100 vx · CSF rule'],
    ['Second stage','A classifier looks at every candidate again','Confirmed on SWI only: candidates from 0.15 / 1 mm³ without the CSF rule; a small 3D CNN (16 / 32 / 64 channels, 0.22 M parameters) sees image, FRST and probability around each candidate and decides. The classic false alarm is a vessel seen end-on: a dark dot in one slice that continues through the neighbouring slices, which only a 3D view reveals.','3D CNN · 0.22 M parameters · SWI only · vessel = false alarm'],
@@ -149,7 +149,7 @@ const stationX = i => i * SPACING;
   const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-8,-2.2,0), new THREE.Vector3(stationX(N-1)+8,-2.2,0)]);
   scene.add(new THREE.Line(g, new THREE.LineBasicMaterial({color:0x26325a})));
   for (let i=0;i<N;i++){
-    const lab = labelSprite(String(i), {size:34, color:'#ffb347', bg:'rgba(0,0,0,0)'}); lab.position.set(stationX(i), -1.6, 2.4); scene.add(lab);
+    const lab = labelSprite(String(i), {size:34, color:'#ffb347', bg:'rgba(0,0,0,0)'}); lab.visible = false; lab.position.set(stationX(i), -1.6, 2.4); scene.add(lab);
   }
   // floor grid
   const grid = new THREE.GridHelper(stationX(N-1)+40, 60, 0x1a2342, 0x141b33); grid.position.set(stationX(N-1)/2, -2.3, 0); scene.add(grid);
@@ -243,6 +243,7 @@ const FEAT_TEX = [210, 190, 170, 40, 25].map((h, i) => featureTexture(h, 7 + i*1
 const SPATIAL = [1, 0.7, 0.5, 0.36, 0.26], SLABS = [1, 2, 4, 8, 16];
 const feat = new THREE.Group(); scene.add(feat);
 const slabs = []; for (let j=0;j<16;j++){ const m = new THREE.Mesh(new THREE.BoxGeometry(TW*0.9, 0.11, TD*0.9), new THREE.MeshBasicMaterial({map:FEAT_TEX[0], transparent:true, opacity:0})); feat.add(m); slabs.push(m); const e = new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry), new THREE.LineBasicMaterial({color:0xdfe7ff, transparent:true, opacity:0})); m.add(e); }
+const inLab = labelSprite('input: 2 channels (T2*, FRST) · full resolution', {size:22, color:'#e8ecf7', bg:'rgba(18,26,48,0.8)', scale:0.009}); scene.add(inLab); inLab.material.opacity = 0;
 const featLab = labelSprite('', {size:24, color:'#e8ecf7', bg:'rgba(18,26,48,0.75)', scale:0.01}); feat.add(featLab); featLab.material.opacity = 0;
 function setFeat(lvl, sp, o, dec){ const n = SLABS[lvl]; slabs.forEach((m, j) => { const on = j < n; m.material.opacity = on ? o : 0; m.children[0].material.opacity = on ? o*0.9 : 0; m.material.map = FEAT_TEX[lvl]; m.position.y = j*0.14 - (n-1)*0.07; }); feat.scale.set(sp, 1, sp); featLab.position.y = n*0.14/2 + 0.45; featLab.material.opacity = o; const ch = 32 * n; const txt = `${ch} ${lang==='de'?'Kanäle':'channels'} · ${lvl===0 ? (lang==='de'?'volle Auflösung':'full resolution') : '1/'+Math.pow(2,lvl)+' in-plane'}`; if (featLab.userData.txt !== txt) { featLab.userData.txt = txt; const nl = labelSprite(txt, {size:24, color:'#e8ecf7', bg:'rgba(18,26,48,0.75)', scale:0.01}); featLab.material.map = nl.material.map; featLab.scale.copy(nl.scale); featLab.material.needsUpdate = true; } }
 function setUnet(o){ encB.concat(decB).forEach(b => b.material.opacity = o); skips.forEach(s => s.material.opacity = o*0.8); unet.children.filter(c=>c.userData.unetLabel).forEach(l => l.material.opacity = o); }
@@ -280,8 +281,9 @@ const cnnLab = labelSprite('3D CNN', {size:24, color:'#e8ecf7', bg:'rgba(0,0,0,0
 let table = null; function buildTable(){ if (table) scene.remove(table); const rows = ['#   volume     location   p max'].concat(REAL.table.map((t,i) => `${i+1}   ${String(t.mm3.toFixed(1)).padStart(5)} mm³   ${t.lage.padEnd(8)}  ${t.p.toFixed(2)}`)); rows.push(`–   missed by the model: ${REAL.fn.length} (reference only)`); if (HAS_FP) rows.push(`×   candidate ${REAL.fp_example.dz_from === REAL.fp_example.dz_to ? 'in' : 'near'} the slice rejected: p ${REAL.fp_example.pmax.toFixed(2)}, ${REAL.fp_example.zext} slice${REAL.fp_example.zext===1?'':'s'}`); table = tableSprite(rows); table.position.set(stationX(8)+4.6, 1.2, 0); table.material.opacity = 0; scene.add(table); }
 
 // ------------------------------------------------------------------ timeline
-const DUR = [7, 9, 8, 7.5, 14, 10, 12, 14, 21];   // seconds per station at 1x; in step mode each station is walked in SUB sub-steps
-const SUB = 4;   // seconds per station at 1x
+const DUR = [3, 6, 6, 6, 30, 8, 10, 12, 18];   // seconds per station
+const SUBS = [1, 2, 2, 2, 10, 2, 3, 3, 4];   // arrow presses per station (each press plays one part, then stops)
+const SUB = 4;   // fallback only   // seconds per station at 1x
 const total = DUR.reduce((a,b)=>a+b,0);
 let time = 0, playing = true, speed = 1, last = performance.now(); let hold = true, held = false, playTo = null;   // step mode is the only mode (no play/pause)
 
@@ -313,7 +315,7 @@ function render(now){
   const tt = seg(t, 0.25, 1);  // local progress after arrival
   drawStep(i, tt, t);
   // camera
-  const target = new THREE.Vector3(x + (i===4 ? 1.2 : 0.9), 0.3, 0); const wide = (view === 'axial') ? ((i === 3) ? 1.35 : (i === 4) ? 1.9 : 1) : ((i === 4) ? 1.3 : 1);
+  const target = new THREE.Vector3(x + (i===4 ? -0.2 : 0.9), 0.3, 0); const wide = (view === 'axial') ? ((i === 3) ? 1.55 : (i === 4) ? 2.3 : 1) : ((i === 4) ? 1.5 : 1);
   const orbit = new THREE.Vector3(Math.sin(orb.yaw)*Math.cos(orb.pitch), Math.sin(orb.pitch), Math.cos(orb.yaw)*Math.cos(orb.pitch)).multiplyScalar(orb.dist * wide);
   camera.position.lerp(target.clone().add(orbit), 0.08); camera.up.set(0, view==='axial' ? 0 : 1, view==='axial' ? -1 : 0); camera.lookAt(target);
   // station rings: current one glows
@@ -326,34 +328,41 @@ function resetAll(){
   showOnly(); setStackOpacity(thick, 0.9); thick.setKind('bias');
   box.material.opacity = 0.7; box.scale.set(1,1,1); maskShell.material.opacity = 0.18;
   spheres.forEach(s => { s.mesh.material.opacity = 0; s.mesh.material.color.set(s.color); s.mesh.material.emissive.set(s.color); s.mesh.scale.set(1,1,1); s.mesh.position.copy(s.mesh.userData.home || s.mesh.position); });
-  setUnet(0); setFeat(0, 1, 0, false); resetTrain(); rings.forEach(r => r.material.opacity = 0); vesselMark.material.opacity = 0; setCrop(cropFP, 0); setCrop(cropTP, 0); cropLabFP.material.opacity = 0; cropLabTP.material.opacity = 0; resetComp(); probLab.material.opacity = 0; patches.forEach(p => p.material.opacity = 0); win.material.opacity = 0; ghost.material.opacity = 0; cnn.material.opacity = 0; cnnLab.material.opacity = 0; if (table) table.material.opacity = 0;
+  setUnet(0); setFeat(0, 1, 0, false); inLab.material.opacity = 0; resetTrain(); rings.forEach(r => r.material.opacity = 0); vesselMark.material.opacity = 0; setCrop(cropFP, 0); setCrop(cropTP, 0); cropLabFP.material.opacity = 0; cropLabTP.material.opacity = 0; resetComp(); probLab.material.opacity = 0; patches.forEach(p => p.material.opacity = 0); win.material.opacity = 0; ghost.material.opacity = 0; cnn.material.opacity = 0; cnnLab.material.opacity = 0; if (table) table.material.opacity = 0;
   frst.position.set(0,0,0); fine.position.set(0,0,0); prob.position.set(0,0,0); fine.scale.set(1,1,1); frst.scale.set(1,1,1);
 }
 spheres.forEach(s => s.mesh.userData.home = s.mesh.position.clone());
 
+const CROP = 1.28;
 function drawStep(i, u, raw){
+  vol.scale.setScalar((i >= 3 && i !== 4) ? CROP : 1);
   resetAll();
   const fadeIn = v => clamp01(v);
   if (i === 0) { thick.visible = true; setStackOpacity(thick, 0.9); box.material.opacity = 0.7; return; }   // the input is there from the first frame (a paused step 0 must not be empty)
-  if (i === 1) { thick.visible = true; const flip = u > 0.55; thick.setKind(flip ? 'inv' : (u > 0.3 ? 'raw' : 'bias')); setStackOpacity(thick, 0.9); return; }
-  if (i === 2) { const k = ease(seg(u, 0.1, 0.7)); thick.visible = k < 0.5; fine.visible = k >= 0.5; setStackOpacity(thick, 0.9*(1-k*2)); setStackOpacity(fine, 0.9*clamp01((k-0.5)*2)); box.scale.set(1 - 0.14*k, 1, 1 - 0.14*k); maskShell.material.opacity = 0.18*(1-k); thick.setKind('inv'); return; }
-  if (i === 3) { fine.visible = frst.visible = true; const k = ease(seg(u, 0.1, 0.6)); fine.position.x = -(TW*0.5 + 0.45)*k; frst.position.x = (TW*0.5 + 0.45)*k; setStackOpacity(frst, 0.9*k); box.scale.set(0.86,1,0.86); box.material.opacity = 0.7*(1-k); maskShell.material.opacity = 0; return; }
+  if (i === 1) { thick.visible = true; const flip = u > 0.62; thick.setKind(flip ? 'inv' : (u > 0.32 ? 'raw' : 'bias')); setStackOpacity(thick, 0.9); return; }
+  if (i === 2) { const k = ease(seg(u, 0.1, 0.45)); const c = ease(seg(u, 0.55, 0.95)); thick.visible = k < 0.5; fine.visible = k >= 0.5; setStackOpacity(thick, 0.9*(1-k*2)); setStackOpacity(fine, 0.9*clamp01((k-0.5)*2)); thick.setKind('inv'); vol.scale.setScalar(1 + (CROP-1)*c); box.scale.set(1 - 0.11*c, 1, 1 - 0.11*c); return; }
+  if (i === 3) { fine.visible = frst.visible = true; const k = ease(seg(u, 0.1, 0.6)); fine.position.x = -(TW*0.5 + 0.8)*k; frst.position.x = (TW*0.5 + 0.8)*k; fine.children.forEach(c => { if (c.userData.sym) c.material.opacity *= (1 - k); }); frst.children.forEach(c => { if (c.userData.sym) c.material.opacity *= (1 - k); }); setStackOpacity(frst, 0.9*k); box.scale.set(0.86,1,0.86); box.material.opacity = 0.7*(1-k); maskShell.material.opacity = 0; return; }
   if (i === 4) { // through the U: the image turns into feature blocks, level by level, and back
     const o = fadeIn(seg(u, 0, 0.15)); setUnet(o); const k = seg(u, 0.15, 1); const nE = encB.length;
     const nodes = encB.map(b => b.position).concat(decB.slice().reverse().map(b => b.position));   // levels 0,1,2,3,4,3,2,1,0
     const lvlOf = a => a < nE ? a : 2*(nE-1) - a;
-    encB.forEach((b,q) => { const on = k > (q+0.5)/(2*nE); b.material.emissiveIntensity = on ? 0.9 : 0.15; b.material.opacity = o*(on?0.55:0.22); });
-    decB.forEach((b,q) => { const on = k > 0.5 + (q+0.5)/(2*nE); b.material.emissiveIntensity = on ? 0.9 : 0.15; b.material.opacity = o*(on?0.55:0.22); });
-    skips.forEach((s,q) => { s.material.opacity = (k > 0.5 + (nE-2-q+0.5)/(2*nE)) ? 0.9 : 0.15*o; });
-    const enter = seg(k, 0, 0.08), leave = seg(k, 0.92, 1), walk = seg(k, 0.08, 0.92);
-    // the real stack flies in and fades as the first block appears
-    fine.visible = frst.visible = enter < 1; const sh = enter; fine.scale.set(1-0.4*sh,1-0.4*sh,1-0.4*sh); frst.scale.copy(fine.scale);
-    fine.position.set(-7.5 + (encB[0].position.x + 7.5)*sh, encB[0].position.y*sh, 0); frst.position.set(fine.position.x + 0.3, fine.position.y, 0.3);
-    setStackOpacity(fine, 0.9*(1-enter)); setStackOpacity(frst, 0.9*(1-enter));
+    const kk = seg(u, 0.1, 0.9); encB.forEach((b,q) => { const on = kk >= q/(2*nE-2) - 1e-3; b.material.emissiveIntensity = on ? 0.9 : 0.15; b.material.opacity = o*(on?0.55:0.22); });
+    decB.forEach((b,q) => { const on = kk >= (2*nE-2-q)/(2*nE-2) - 1e-3; b.material.emissiveIntensity = on ? 0.9 : 0.15; b.material.opacity = o*(on?0.55:0.22); });
+    skips.forEach((s,q) => { s.material.opacity = (kk >= (2*nE-2-q)/(2*nE-2) - 1e-3) ? 0.9 : 0.15*o; });
+    // one click per level: 0.0-0.1 enter (input -> 32 feature maps), 0.1-0.9 eight moves along the U, 0.9-1.0 output
+    const enter = seg(u, 0.02, 0.1), leave = seg(u, 0.9, 1), walk = seg(u, 0.1, 0.9);
+    // the input stays where it is on the left: two channels at full resolution, the reference for every change
+    const inPos = new THREE.Vector3(encB[0].position.x - 3.4, encB[0].position.y, 0);
+    fine.visible = frst.visible = true; fine.scale.setScalar(0.5); frst.scale.setScalar(0.5);
+    fine.position.copy(inPos); frst.position.set(inPos.x + 0.35, inPos.y - 0.15, inPos.z + 0.35);
+    setStackOpacity(fine, 0.95); setStackOpacity(frst, 0.6);
+    inLab.position.set(vol.position.x + inPos.x, vol.position.y + inPos.y + 1.6, vol.position.z + inPos.z); inLab.material.opacity = o;
     const pos = walk * (nodes.length - 1); const a = Math.min(nodes.length - 2, Math.floor(pos)), f = pos - a;
     const la = lvlOf(a), lb = lvlOf(a + 1); const lvl = f < 0.5 ? la : lb; const sp = SPATIAL[la] + (SPATIAL[lb] - SPATIAL[la]) * ease(f);
-    const P = nodes[a].clone().lerp(nodes[a+1], ease(f)); feat.position.set(unet.position.x + P.x, P.y + 0.25, P.z);
-    setFeat(lvl, sp, o * enter * (1 - leave), a >= nE - 1);
+    let P = nodes[a].clone().lerp(nodes[a+1], ease(f));
+    if (enter < 1) P = inPos.clone().lerp(nodes[0], ease(enter));                         // the first feature block grows out of the input
+    feat.position.set(unet.position.x + P.x, P.y + 0.25, P.z);
+    setFeat(lvl, enter < 1 ? 0.5 + (1 - 0.5) * ease(enter) : sp, o * Math.max(0.15, enter) * (1 - leave), a >= nE - 1);
     box.material.opacity = 0; maskShell.material.opacity = 0;
     prob.visible = leave > 0; setStackOpacity(prob, 0.9*leave); prob.position.set(decB[0].position.x + 1.2 + 5.0*leave, 0, 0); probLab.position.set(vol.position.x + prob.position.x, vol.position.y + 0.6, vol.position.z - TD*0.5 - 2.4); probLab.material.opacity = leave; return; }
   if (i === 5) { fine.visible = true; box.material.opacity = 0.7; box.scale.set(0.86,1,0.86); const k = seg(u, 0.05, 0.75); const steps = 12; const s = Math.floor(k*steps), f = k*steps - s; const col = s % 4, row = Math.floor(s/4); win.position.set(-1.2 + col*0.8, -0.9 + row*0.9, -1.4 + (f*2.6)); win.material.opacity = k < 1 ? 0.9 : 0; ghost.position.copy(win.position); ghost.material.opacity = k<1 ? 0.12 : 0; const m = seg(u, 0.75, 1); prob.visible = m > 0; setStackOpacity(prob, 0.9*m); setStackOpacity(fine, 0.9*(1-m)); probLab.position.set(vol.position.x + 0.9, vol.position.y + 0.6, vol.position.z - TD*0.5 - 2.4); probLab.material.opacity = m; return; }
@@ -365,7 +374,7 @@ function drawStep(i, u, raw){
     const o = fadeIn(seg(u,0,0.12)); cnn.material.opacity = o; cnnLab.material.opacity = o;
     const cands = spheres.filter(s => s.kind==='tp' || s.kind==='fp'); const order = cands.slice().sort((a, b) => (a.kind === 'fp') - (b.kind === 'fp'));   // true ones first, the vessel last
     const per = 0.82 / order.length;
-    order.forEach((s,q) => { const a = 0.12 + q*per, b = a + per; const k = seg(u, a, b); const home = s.mesh.userData.home; const goal = cnn.position.clone().sub(vol.position);
+    order.forEach((s,q) => { const a = 0.12 + q*per, b = a + per; const k = seg(u, a, b); const home = s.mesh.userData.home; const goal = cnn.position.clone().sub(vol.position).divideScalar(vol.scale.x);
       const back = k > 0.5 ? (k-0.5)*2 : 0; const go = k <= 0.5 ? k*2 : 1; s.mesh.position.copy(home.clone().lerp(goal, ease(go)*(1-ease(back)))); s.mesh.material.opacity = 1;
       if (k > 0.5) { const c = s.kind === 'tp' ? 0x4ade80 : 0xf87171; s.mesh.material.color.set(c); s.mesh.material.emissive.set(c); if (s.kind === 'fp') { s.mesh.material.opacity = 1 - back; vesselMark.material.opacity = 0.9 * (1 - back); } }
       cnn.material.emissiveIntensity = (k>0.4 && k<0.6) ? 1.2 : 0.3;
@@ -390,14 +399,14 @@ const stepsBox = document.getElementById('steps');
 function buildStepButtons(){ stepsBox.innerHTML = ''; T[lang].steps.forEach((s,i) => { const b = document.createElement('button'); b.textContent = i + ' ' + s[0]; b.id = 'st'+i; b.onclick = () => jump(i); stepsBox.appendChild(b); }); }
 function caption(i){ const s = T[lang].steps[i]; document.getElementById('ck').textContent = `Station ${i} / 8 · subject ${SUBJ + 1} / ${SUBJECTS.length}: ${REAL.case}, slice ${REAL.z} (↑ ↓ change subject)`; document.getElementById('ch').textContent = s[0] + ' · ' + s[1]; document.getElementById('cp').textContent = s[2]; document.getElementById('cm').textContent = s[3]; [...stepsBox.children].forEach((b,q) => { b.classList.toggle('cur', q===i); b.classList.toggle('done', q<i); }); try { document.getElementById('st'+i).scrollIntoView({inline:'center', block:'nearest', behavior: reduced ? 'auto' : 'smooth'}); } catch(e){} }
 const startOf = i => DUR.slice(0,i).reduce((a,b)=>a+b,0);
-function jump(i){ time = startOf(i) + 0.001; cur = -1; held = false; playing = true; playTo = hold ? startOf(i) + DUR[i] / SUB - 0.001 : null; updatePlayBtn(); }
-function subOf(){ const [i, t] = stepAt(time); return [i, t, Math.min(SUB, Math.floor(t * SUB + 0.02))]; }   // a stop sits 1 ms before the boundary: count it as reached
-function updatePlayBtn(){ const b = document.getElementById('play'); b.textContent = playing ? T[lang].pause : T[lang].play; b.setAttribute('aria-pressed', playing ? 'true' : 'false'); document.body.classList.toggle('held', held && !playing); const [si, st, sk] = subOf(); document.getElementById('holdmark').textContent = (sk >= SUB ? T[lang].held : `step ${sk} / ${SUB} of this station — → continues, ← back`); }
+function jump(i){ time = startOf(i) + 0.001; cur = -1; held = false; playing = true; playTo = hold ? startOf(i) + DUR[i] / SUBS[i] - 0.001 : null; updatePlayBtn(); }
+function subOf(){ const [i, t] = stepAt(time); return [i, t, Math.min(SUBS[i], Math.floor(t * SUBS[i] + 0.02))]; }   // a stop sits 1 ms before the boundary: count it as reached
+function updatePlayBtn(){ const b = document.getElementById('play'); b.textContent = playing ? T[lang].pause : T[lang].play; b.setAttribute('aria-pressed', playing ? 'true' : 'false'); document.body.classList.toggle('held', held && !playing); const [si, st, sk] = subOf(); document.getElementById('holdmark').textContent = (sk >= SUBS[si] ? T[lang].held : `step ${Math.max(1, sk)} / ${SUBS[si]} of this station — → continues, ← back`); }
 document.getElementById('play').onclick = () => { if (time >= total - 0.01) time = 0; playTo = null; held = false; playing = !playing; updatePlayBtn(); };   // continuous play, ignores the sub-steps
 document.getElementById('prev').onclick = () => { if (hold && playing && playTo !== null) { playTo = null; playing = false; }   // stop a running sub-step first
-  const [i, t, k] = subOf(); if (hold && k >= 1 && t > 0.02) { time = startOf(i) + DUR[i] * (k - 1) / SUB + 0.001; playTo = null; playing = false; held = true; cur = -1; updatePlayBtn(); return; } jump(Math.max(0, i - (t < 0.15 ? 1 : 0))); };
+  const [i, t, k] = subOf(); if (hold && k >= 1 && t > 0.02) { time = startOf(i) + DUR[i] * (k - 1) / SUBS[i] + 0.001; playTo = null; playing = false; held = true; cur = -1; updatePlayBtn(); return; } jump(Math.max(0, i - (t < 0.15 ? 1 : 0))); };
 document.getElementById('next').onclick = () => { if (hold && playing && playTo !== null) { time = playTo; playTo = null; }   // a sub-step still playing: finish it at once, then start the next one
-  const [i, t, k] = subOf(); if (hold) { if (k < SUB && t < 0.999) { playTo = startOf(i) + DUR[i] * (k + 1) / SUB - 0.001; held = false; playing = true; updatePlayBtn(); return; } } jump(Math.min(N-1, i + 1)); };
+  const [i, t, k] = subOf(); if (hold) { if (k < SUBS[i] && t < 0.999) { playTo = startOf(i) + DUR[i] * (k + 1) / SUBS[i] - 0.001; held = false; playing = true; updatePlayBtn(); return; } } jump(Math.min(N-1, i + 1)); };
 document.getElementById('hold').onclick = e => { hold = !hold; e.target.setAttribute('aria-pressed', hold ? 'true' : 'false'); try { localStorage.setItem('cmbfly_hold', hold ? '1' : '0'); } catch(err){} if (!hold && held) { held = false; playing = true; updatePlayBtn(); } };
 document.getElementById('talk').onclick = e => { const on = document.body.classList.toggle('talk'); setTimeout(() => window.dispatchEvent(new Event('resize')), 30); e.target.setAttribute('aria-pressed', on ? 'true' : 'false'); try { localStorage.setItem('cmbfly_talk', on ? '1' : '0'); } catch(err){} };
 document.getElementById('subjup').onclick = () => switchSubject(-1); document.getElementById('subjdown').onclick = () => switchSubject(1);
@@ -424,7 +433,7 @@ applyLang();
 try { const t0 = parseFloat(sessionStorage.getItem('cmbfly_time') || ''); if (!isNaN(t0)) { time = Math.max(0, Math.min(total - 0.01, t0)); sessionStorage.removeItem('cmbfly_time'); } } catch(e){}
 const focusStage = () => { try { document.getElementById('stage').focus({preventScroll:true}); } catch(e){} };
 focusStage(); window.addEventListener('load', focusStage); document.addEventListener('pointerdown', e => { if (!/input|select|textarea|button/i.test(e.target.tagName)) focusStage(); });
-if (hold) { const [i0] = stepAt(time); playTo = startOf(i0) + DUR[i0] / SUB - 0.001; }
+if (hold) { const [i0] = stepAt(time); playTo = startOf(i0) + DUR[i0] / SUBS[i0] - 0.001; }
 document.getElementById('hold').setAttribute('aria-pressed', hold ? 'true' : 'false');
 try { if (localStorage.getItem('cmbfly_talk') === '1') { document.body.classList.add('talk'); document.getElementById('talk').setAttribute('aria-pressed','true'); } } catch(e){}
 camera.position.set(stationX(0)+8, 5, 14);
