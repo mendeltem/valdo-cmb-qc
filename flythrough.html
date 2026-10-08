@@ -51,7 +51,7 @@ body.talk #steps,body.talk #hint,body.talk #top .sub{display:none}body.talk #top
 
 <div id="stage" tabindex="0" aria-label="animation; arrow keys step"></div>
 <div id="top">
-  <div><h1 id="t1">CMB Pipeline Flythrough</h1><div class="sub" id="t2">One T2* volume travelling through the ten stations of the microbleed chain</div></div>
+  <div><h1 id="t1">CMB Pipeline Flythrough</h1><div class="sub" id="t2">One T2* volume travelling through the nine stations of the microbleed chain</div></div>
   <div id="ctl">
     <button id="play" hidden aria-pressed="true" title="space">⏸ Pause</button>
     <button id="prev" title="←">◀ step</button>
@@ -86,7 +86,7 @@ body.talk #steps,body.talk #hint,body.talk #top .sub{display:none}body.talk #top
 // ------------------------------------------------------------------ captions (DE / EN)
 const T = {
  de: {
-  title:'CMB Pipeline Flythrough', sub:'Ein T2*-Volumen auf dem Weg durch die zehn Stationen der Mikroblutungskette · Bild: VALDO 2021 Task 2 (CC BY-NC-SA 4.0), eine echte axiale Schicht, die übrigen Schichten sind symbolisch',
+  title:'CMB Pipeline Flythrough', sub:'Ein T2*-Volumen auf dem Weg durch die neun Stationen der Mikroblutungskette · Bild: VALDO 2021 Task 2 (CC BY-NC-SA 4.0), eine echte axiale Schicht, die übrigen Schichten sind symbolisch',
   hint:'Ansicht: axial oder 3D (Taste A) · Ziehen = drehen · Rad = Zoom · → / Klicker = weiter · ← zurück · Leertaste Pause · F Vollbild · P Vortrag', play:'▶ Abspielen', pause:'⏸ Pause', step:'Schritt', axial:'Ansicht: axial', three:'Ansicht: 3D', held:'Station zu Ende — → oder Klicker: weiter', hold:'⏯ Halt je Station', talk:'Vortrag',
   steps:[
    ['Eingabe','Ein T2*- oder SWI-Volumen und eine Hirnmaske','Ein Fall kommt als dicker Schichtstapel: z. B. 512 × 512 × 35 Voxel bei 0,45 × 0,45 × 4 mm. Die Maske grenzt das Hirn ab; sie wird mitgeliefert, HD-BET nur, wenn sie fehlt.','512 × 512 × 35 · 0,45 × 0,45 × 4 mm'],
@@ -94,7 +94,6 @@ const T = {
    ['Ein Gitter','0,5 × 0,5 × 1,0 mm für jeden Fall, auf das Hirn beschnitten','Jeder Fall landet auf demselben physikalischen Gitter (Bild linear, Referenz nächster Nachbar, Bildmitte erhalten) und wird auf die Box des Hirns beschnitten.','0,5 × 0,5 × 1,0 mm · Bounding-Box'],
    ['Zweiter Kanal','Schnelle radiale Symmetrie (FRST)','Mikroblutungen sind kleine runde dunkle Punkte. Die FRST-Antwort (vier Radien 2 / 3 / 4 / 6 Voxel, eine feste Skala je Volumen) betont genau solche Punkte und geht als zweiter Kanal mit hinein.','FRST · Radien 2/3/4/6 vx'],
    ['Netz','Anisotropes 3D U-Net, 22,5 M Parameter','In der Arena gewählt: 32 Basiskanäle, vier Pooling-Stufen, InstanceNorm, LeakyReLU, transponierte Faltungen, ein Sigmoid-Ausgang. Die erste Stufe faltet und poolt nur in der Schicht (1 × 3 × 3), ab der zweiten ist das Gitter 1 mm isotrop.','32 → 64 → 128 → 256 → 512 Kanäle'],
-   ['Trainingsrezept','800 Patches je Epoche, 60 Epochen','Patches von 2 × 38 × 62 × 94 Voxeln, Stapel 4: 60 % um eine Mikroblutung zentriert (jede Läsion gleich wahrscheinlich), 25 % zufällig im Hirn, 15 % irgendwo. Zufällige Spiegelungen als einzige Augmentierung. 60 feste Epochen, kein frühes Stoppen.','60 % / 25 % / 15 % · Batch 4'],
    ['Inferenz','Gleitendes Fenster, Mittel aus zwei Seeds','Fenster in Trainingsgröße mit halbem Versatz, überlappende Vorhersagen gemittelt, Fenster außerhalb des Hirns übersprungen. Die Karte ist das Mittel zweier Netze mit verschiedenen Startwerten.','halber Versatz · 2 Seeds'],
    ['Nachverarbeitung','Ein fester Arbeitspunkt und eine anatomische Regel','Schwelle 0,3, 26-verbundene Komponenten. Weg fallen Komponenten unter 2 mm³ oder über 2100 Voxel (10-mm-Kugel) und solche, deren Mehrheitslabel Ventrikel oder äußerer Liquor ist. Kein einstellbarer Parameter.','0,3 · ≥ 2 mm³ · ≤ 2100 vx · Liquor-Regel'],
    ['Zweite Stufe','Ein Klassifikator sieht jeden Kandidaten noch einmal','Nur auf SWI bestätigt: Kandidaten ab 0,15 / 1 mm³ ohne Liquor-Regel; ein kleines 3D-CNN (16 / 32 / 64 Kanäle, 0,22 M Parameter) sieht Bild, FRST und Wahrscheinlichkeit um jeden Kandidaten und entscheidet.','3D-CNN · 0,22 M Parameter · nur SWI'],
@@ -102,7 +101,7 @@ const T = {
   ]
  },
  en: {
-  title:'CMB Pipeline Flythrough', sub:'One T2* volume travelling through the ten stations of the microbleed chain · image: VALDO 2021 Task 2 (CC BY-NC-SA 4.0), one real axial slice, the other slices are symbolic',
+  title:'CMB Pipeline Flythrough', sub:'One T2* volume travelling through the nine stations of the microbleed chain · image: VALDO 2021 Task 2 (CC BY-NC-SA 4.0), one real axial slice, the other slices are symbolic',
   hint:'→ / clicker = next sub-step · ← back · ↑ ↓ = other subject · space = next · A axial/3D · F full screen · P talk mode', play:'▶ Play', pause:'⏸ Pause', step:'step', axial:'view: axial', three:'view: 3D', held:'end of station — → or clicker: next station', hold:'⏯ Step mode', talk:'Talk mode',
   steps:[
    ['Input','One T2* or SWI volume and a brain mask','A case arrives as a thick slab of slices: e.g. 512 × 512 × 35 voxels at 0.45 × 0.45 × 4 mm. The mask delimits the brain; it is delivered with the data, HD-BET only when it is missing.','512 × 512 × 35 · 0.45 × 0.45 × 4 mm'],
@@ -110,7 +109,6 @@ const T = {
    ['One grid','0.5 × 0.5 × 1.0 mm for every case, cropped to the brain','Every case lands on the same physical grid (image linear, label nearest neighbour, centre of the field of view preserved) and is cropped to the bounding box of the brain.','0.5 × 0.5 × 1.0 mm · bounding box'],
    ['Second channel','Fast radial symmetry (FRST)','Microbleeds are small round dark dots. The FRST response (four radii 2 / 3 / 4 / 6 voxels, one fixed scale per volume) highlights exactly such dots and enters as a second channel.','FRST · radii 2/3/4/6 vx'],
    ['Network','Anisotropic 3D U-Net, 22.5 M parameters','Chosen in the arena: 32 base channels, four poolings, InstanceNorm, LeakyReLU, transposed convolutions, one sigmoid output. The first level convolves and pools in-plane only (1 × 3 × 3); from the second level on the grid is 1 mm isotropic.','32 → 64 → 128 → 256 → 512 channels'],
-   ['Training recipe','800 patches per epoch, 60 epochs','Patches of 2 × 38 × 62 × 94 voxels, batch 4: 60 % centred on a microbleed (each lesion equally likely), 25 % random brain, 15 % anywhere. Random flips as the only augmentation. 60 fixed epochs, no early stopping.','60 % / 25 % / 15 % · batch 4'],
    ['Inference','Sliding window, mean of two seeds','Windows of the training size with half-window stride, overlapping predictions averaged, windows outside the brain skipped. The map is the mean of two networks with different seeds.','half stride · 2 seeds'],
    ['Post-processing','One fixed operating point and an anatomical rule','Threshold 0.3, 26-connected components. Dropped: components below 2 mm³ or above 2100 voxels (a 10 mm sphere), and components whose majority tissue label is ventricle or extracerebral CSF. No tunable parameter.','0.3 · ≥ 2 mm³ · ≤ 2100 vx · CSF rule'],
    ['Second stage','A classifier looks at every candidate again','Confirmed on SWI only: candidates from 0.15 / 1 mm³ without the CSF rule; a small 3D CNN (16 / 32 / 64 channels, 0.22 M parameters) sees image, FRST and probability around each candidate and decides. The classic false alarm is a vessel seen end-on: a dark dot in one slice that continues through the neighbouring slices, which only a 3D view reveals.','3D CNN · 0.22 M parameters · SWI only · vessel = false alarm'],
@@ -139,7 +137,7 @@ const camera = new THREE.PerspectiveCamera(42, stage.clientWidth/stage.clientHei
 scene.add(new THREE.HemisphereLight(0xdfe7ff, 0x0b1020, 0.9));
 const key = new THREE.DirectionalLight(0xffffff, 0.8); key.position.set(5, 10, 8); scene.add(key);
 
-const SPACING = 16, N = 10;
+const SPACING = 16, N = 9;
 const stationX = i => i * SPACING;
 
 // rail + station pads
@@ -246,7 +244,7 @@ function setFeat(lvl, sp, o, dec){ const n = SLABS[lvl]; slabs.forEach((m, j) =>
 function setUnet(o){ encB.concat(decB).forEach(b => b.material.opacity = o); skips.forEach(s => s.material.opacity = o*0.8); unet.children.filter(c=>c.userData.unetLabel).forEach(l => l.material.opacity = o); }
 
 // training set-up (station 5): tiles of real slices, a compact U-Net block, outputs next to labels, a loss bar, the 3D CNN with candidate patches
-const train = new THREE.Group(); scene.add(train); train.position.x = stationX(5);
+const train = new THREE.Group(); scene.add(train); train.position.x = -999; train.visible = false;   // training station removed (lecture shows one image through the U-Net)
 const TT_W = 1.25; const tTex = {};
 TRAIN.forEach((t, i) => { tTex[i] = { img: loader.load(t.img), lab: loader.load(t.lab), prob: loader.load(t.prob), patches: t.patches.map(q => loader.load(q.img)) }; });
 function tile(i, kind){ const t = TRAIN[i]; const h = TT_W * t.h / t.w; const g = new THREE.Group();
@@ -272,13 +270,13 @@ const patches = []; (function(){ const cols = [0xfde725,0xfde725,0xfde725,0x60a5
 const win = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1.4, 1.0, 1.9)), new THREE.LineBasicMaterial({color:0xffb347, transparent:true, opacity:0})); vol.add(win);
 const ghost = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.0, 1.9), new THREE.MeshBasicMaterial({color:0xffb347, transparent:true, opacity:0})); vol.add(ghost);
 // classifier cube (station 9)
-const cnn = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.4, 1.4), new THREE.MeshStandardMaterial({color:0x8b5cf6, emissive:0x8b5cf6, emissiveIntensity:0.3, transparent:true, opacity:0})); cnn.position.set(stationX(8)+3.2, 0.6, 0); scene.add(cnn);
-const cnnLab = labelSprite('3D CNN', {size:24, color:'#e8ecf7', bg:'rgba(0,0,0,0)', scale:0.01}); cnnLab.position.set(stationX(8)+3.2, 1.8, 0); scene.add(cnnLab); cnnLab.material.opacity = 0;
+const cnn = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.4, 1.4), new THREE.MeshStandardMaterial({color:0x8b5cf6, emissive:0x8b5cf6, emissiveIntensity:0.3, transparent:true, opacity:0})); cnn.position.set(stationX(7)+3.2, 0.6, 0); scene.add(cnn);
+const cnnLab = labelSprite('3D CNN', {size:24, color:'#e8ecf7', bg:'rgba(0,0,0,0)', scale:0.01}); cnnLab.position.set(stationX(7)+3.2, 1.8, 0); scene.add(cnnLab); cnnLab.material.opacity = 0;
 // output table (station 10)
-let table = null; function buildTable(){ if (table) scene.remove(table); const rows = ['#   volume     location   p max'].concat(REAL.table.map((t,i) => `${i+1}   ${String(t.mm3.toFixed(1)).padStart(5)} mm³   ${t.lage.padEnd(8)}  ${t.p.toFixed(2)}`)); rows.push(`–   missed by the model: ${REAL.fn.length} (reference only)`); if (HAS_FP) rows.push(`×   candidate ${REAL.fp_example.dz_from === REAL.fp_example.dz_to ? 'in' : 'near'} the slice rejected: p ${REAL.fp_example.pmax.toFixed(2)}, ${REAL.fp_example.zext} slice${REAL.fp_example.zext===1?'':'s'}`); table = tableSprite(rows); table.position.set(stationX(9)+4.6, 1.2, 0); table.material.opacity = 0; scene.add(table); }
+let table = null; function buildTable(){ if (table) scene.remove(table); const rows = ['#   volume     location   p max'].concat(REAL.table.map((t,i) => `${i+1}   ${String(t.mm3.toFixed(1)).padStart(5)} mm³   ${t.lage.padEnd(8)}  ${t.p.toFixed(2)}`)); rows.push(`–   missed by the model: ${REAL.fn.length} (reference only)`); if (HAS_FP) rows.push(`×   candidate ${REAL.fp_example.dz_from === REAL.fp_example.dz_to ? 'in' : 'near'} the slice rejected: p ${REAL.fp_example.pmax.toFixed(2)}, ${REAL.fp_example.zext} slice${REAL.fp_example.zext===1?'':'s'}`); table = tableSprite(rows); table.position.set(stationX(8)+4.6, 1.2, 0); table.material.opacity = 0; scene.add(table); }
 
 // ------------------------------------------------------------------ timeline
-const DUR = [7, 9, 8, 7.5, 12, 11, 10, 12, 14, 21];   // seconds per station at 1x; in step mode each station is walked in SUB sub-steps
+const DUR = [7, 9, 8, 7.5, 14, 10, 12, 14, 21];   // seconds per station at 1x; in step mode each station is walked in SUB sub-steps
 const SUB = 4;   // seconds per station at 1x
 const total = DUR.reduce((a,b)=>a+b,0);
 let time = 0, playing = true, speed = 1, last = performance.now(); let hold = true, held = false, playTo = null;   // step mode is the only mode (no play/pause)
@@ -311,7 +309,7 @@ function render(now){
   const tt = seg(t, 0.25, 1);  // local progress after arrival
   drawStep(i, tt, t);
   // camera
-  const target = new THREE.Vector3(x + (i===4 ? 1.2 : i===5 ? 1.6 : 0.9), 0.3, 0); const wide = (view === 'axial') ? ((i === 3) ? 1.35 : (i === 4) ? 1.9 : (i === 5) ? 1.6 : 1) : ((i === 4 || i === 5) ? 1.3 : 1);
+  const target = new THREE.Vector3(x + (i===4 ? 1.2 : 0.9), 0.3, 0); const wide = (view === 'axial') ? ((i === 3) ? 1.35 : (i === 4) ? 1.9 : 1) : ((i === 4) ? 1.3 : 1);
   const orbit = new THREE.Vector3(Math.sin(orb.yaw)*Math.cos(orb.pitch), Math.sin(orb.pitch), Math.cos(orb.yaw)*Math.cos(orb.pitch)).multiplyScalar(orb.dist * wide);
   camera.position.lerp(target.clone().add(orbit), 0.08); camera.up.set(0, view==='axial' ? 0 : 1, view==='axial' ? -1 : 0); camera.lookAt(target);
   // station rings: current one glows
@@ -354,34 +352,11 @@ function drawStep(i, u, raw){
     setFeat(lvl, sp, o * enter * (1 - leave), a >= nE - 1);
     box.material.opacity = 0; maskShell.material.opacity = 0;
     prob.visible = leave > 0; setStackOpacity(prob, 0.9*leave); prob.position.set(decB[0].position.x + 1.2 + 5.0*leave, 0, 0); probLab.position.set(vol.position.x + prob.position.x, vol.position.y + 0.6, vol.position.z - TD*0.5 - 2.4); probLab.material.opacity = leave; return; }
-  if (i === 5) { // training: real slices go one by one into the U-Net, the output lands next to its label, the loss falls; then candidate patches train the 3D CNN
-    const o = fadeIn(seg(u, 0, 0.1)); const n = TRAIN.length; const nP = patchTiles.length;
-    unetBlock.material.opacity = o; unetBlockLab.material.opacity = o; lossBar.material.opacity = o; lossLab.material.opacity = o;
-    const phaseA = seg(u, 0.1, 0.72), phaseB = seg(u, 0.74, 1.0);
-    const ep = Math.min(60, Math.round(1 + 59 * u)); const loss = 0.9 * Math.exp(-3.2 * u) + 0.06; lossBar.scale.x = Math.max(0.03, loss); lossBar.position.x = -0.5 + loss / 2;
-    setLossLabel(`epoch ${ep} / 60 · loss ${loss.toFixed(2)} · 800 patches per epoch`);
-    TRAIN.forEach((t, q) => {
-      const h = TT_W * t.h / t.w; const a = q / n, b = (q + 1) / n; const k = seg(phaseA, a, b);        // this tile's turn
-      const row = -3.6 + q * 1.45;                                                                  // queue of inputs on the left, bottom row
-      const fly = ease(seg(k, 0, 0.45)); const outK = seg(k, 0.5, 1);
-      const pIn = new THREE.Vector3(row - 1.5, -1.6, 1.2).lerp(unetBlock.position, fly);
-      tImg[q].position.copy(pIn); tImg[q].scale.setScalar(1 - 0.6 * fly); tileOpacity(tImg[q], o * (1 - seg(k, 0.4, 0.5)) * (phaseA >= a || q === 0 ? 1 : 1));
-      const col = -3.6 + q * 1.45;                                                                  // label above, output below, top row
-      tLab[q].position.set(col, 1.9 + h * 0.0, -0.8); tileOpacity(tLab[q], o * fadeIn(outK * 2));
-      tOut[q].position.set(col, 1.9 - h - 0.1, -0.8); tileOpacity(tOut[q], o * fadeIn(outK * 2));
-      unetBlock.material.emissiveIntensity = (k > 0.4 && k < 0.55) ? 1.2 : 0.3;
-    });
-    cnnBlock.material.opacity = o * fadeIn(phaseB * 4); cnnBlockLab.material.opacity = cnnBlock.material.opacity;
-    patchTiles.forEach((g, q) => { const a = q / nP, b = (q + 1) / nP; const k = seg(phaseB, a, b); const fly = ease(seg(k, 0, 0.5)); const back = ease(seg(k, 0.5, 1));
-      const home = new THREE.Vector3(2.2 + (q % 3) * 0.5, -1.2 - Math.floor(q / 3) * 0.5, 1.0); const P = home.clone().lerp(cnnBlock.position, fly * (1 - back)); g.position.copy(P);
-      tileOpacity(g, o * fadeIn(phaseB * 4)); const c = k > 0.5 ? (g.userData.kind === 'true' ? 0x4ade80 : 0xf87171) : 0x8fa3d9; g.children[1].material.color.set(c);
-      cnnBlock.material.emissiveIntensity = (k > 0.4 && k < 0.6) ? 1.2 : 0.3; });
-    fine.visible = false; box.material.opacity = 0; vol.position.y = 0.3; return; }
-  if (i === 6) { fine.visible = true; box.material.opacity = 0.7; box.scale.set(0.86,1,0.86); const k = seg(u, 0.05, 0.75); const steps = 12; const s = Math.floor(k*steps), f = k*steps - s; const col = s % 4, row = Math.floor(s/4); win.position.set(-1.2 + col*0.8, -0.9 + row*0.9, -1.4 + (f*2.6)); win.material.opacity = k < 1 ? 0.9 : 0; ghost.position.copy(win.position); ghost.material.opacity = k<1 ? 0.12 : 0; const m = seg(u, 0.75, 1); prob.visible = m > 0; setStackOpacity(prob, 0.9*m); setStackOpacity(fine, 0.9*(1-m)); probLab.position.set(vol.position.x + 0.9, vol.position.y + 0.6, vol.position.z - TD*0.5 - 2.4); probLab.material.opacity = m; return; }
-  if (i === 7) { prob.visible = u < 0.3; setStackOpacity(prob, 0.9*(1-seg(u,0.1,0.3))); probLab.position.set(vol.position.x + 0.9, vol.position.y + 0.6, vol.position.z - TD*0.5 - 2.4); probLab.material.opacity = 1-seg(u,0.1,0.3); csf.visible = u > 0.55; setStackOpacity(csf, 0.6*seg(u,0.55,0.75)*(1-seg(u,0.92,1))); box.material.opacity = 0.5; box.scale.set(0.86,1,0.86);
+  if (i === 5) { fine.visible = true; box.material.opacity = 0.7; box.scale.set(0.86,1,0.86); const k = seg(u, 0.05, 0.75); const steps = 12; const s = Math.floor(k*steps), f = k*steps - s; const col = s % 4, row = Math.floor(s/4); win.position.set(-1.2 + col*0.8, -0.9 + row*0.9, -1.4 + (f*2.6)); win.material.opacity = k < 1 ? 0.9 : 0; ghost.position.copy(win.position); ghost.material.opacity = k<1 ? 0.12 : 0; const m = seg(u, 0.75, 1); prob.visible = m > 0; setStackOpacity(prob, 0.9*m); setStackOpacity(fine, 0.9*(1-m)); probLab.position.set(vol.position.x + 0.9, vol.position.y + 0.6, vol.position.z - TD*0.5 - 2.4); probLab.material.opacity = m; return; }
+  if (i === 6) { prob.visible = u < 0.3; setStackOpacity(prob, 0.9*(1-seg(u,0.1,0.3))); probLab.position.set(vol.position.x + 0.9, vol.position.y + 0.6, vol.position.z - TD*0.5 - 2.4); probLab.material.opacity = 1-seg(u,0.1,0.3); csf.visible = u > 0.55; setStackOpacity(csf, 0.6*seg(u,0.55,0.75)*(1-seg(u,0.92,1))); box.material.opacity = 0.5; box.scale.set(0.86,1,0.86);
     fine.visible = true; setStackOpacity(fine, 0.9);
     spheres.forEach(s => { const o = fadeIn(seg(u,0.15,0.3)); const pulse = 1 + 0.15*Math.sin(u*40); s.mesh.material.opacity = o; s.mesh.scale.set(pulse,pulse,pulse); }); vesselMark.material.opacity = 0.9 * fadeIn(seg(u, 0.5, 0.7)); return; }
-  if (i === 8) { // second stage: each candidate (image, FRST, probability around it) goes into the 3D CNN; a microbleed comes back green, the vessel red
+  if (i === 7) { // second stage: each candidate (image, FRST, probability around it) goes into the 3D CNN; a microbleed comes back green, the vessel red
     box.material.opacity = 0.5; box.scale.set(0.86,1,0.86); fine.visible = true; setStackOpacity(fine, 0.9); vesselMark.material.opacity = 0.9;
     const o = fadeIn(seg(u,0,0.12)); cnn.material.opacity = o; cnnLab.material.opacity = o;
     const cands = spheres.filter(s => s.kind==='tp' || s.kind==='fp'); const order = cands.slice().sort((a, b) => (a.kind === 'fp') - (b.kind === 'fp'));   // true ones first, the vessel last
@@ -394,7 +369,7 @@ function drawStep(i, u, raw){
       const show = fadeIn(seg(k, 0.15, 0.3)) * (1 - seg(k, 0.9, 1)); const g = s.kind === 'fp' ? cropFP : (q === 0 ? cropTP : null); const lab = s.kind === 'fp' ? cropLabFP : (q === 0 ? cropLabTP : null);
       if (g) { g.position.set(cnn.position.x + 1.6, cnn.position.y - 0.2, cnn.position.z + 0.4); setCrop(g, show); lab.position.set(cnn.position.x + 1.6, cnn.position.y + 1.5, cnn.position.z + 0.4); lab.material.opacity = show; }
     }); return; }
-  if (i === 9) { // output: every finding of this slice is inspected one by one (ring, its nine neighbouring slices, the reason), then mask and table
+  if (i === 8) { // output: every finding of this slice is inspected one by one (ring, its nine neighbouring slices, the reason), then mask and table
     mask.visible = true; setStackOpacity(mask, 0.9); box.material.opacity = 0.7; box.scale.set(0.86,1,0.86);
     spheres.filter(s=>s.kind==='tp').forEach(s => { s.mesh.material.color.set(0x4ade80); s.mesh.material.emissive.set(0x4ade80); s.mesh.material.opacity = 1; });
     const nC = COMP.length; const per = 0.78 / nC;
@@ -409,7 +384,7 @@ function drawStep(i, u, raw){
 // ------------------------------------------------------------------ UI
 const stepsBox = document.getElementById('steps');
 function buildStepButtons(){ stepsBox.innerHTML = ''; T[lang].steps.forEach((s,i) => { const b = document.createElement('button'); b.textContent = i + ' ' + s[0]; b.id = 'st'+i; b.onclick = () => jump(i); stepsBox.appendChild(b); }); }
-function caption(i){ const s = T[lang].steps[i]; document.getElementById('ck').textContent = `Station ${i} / 9 · subject ${SUBJ + 1} / ${SUBJECTS.length}: ${REAL.case}, slice ${REAL.z} (↑ ↓ change subject)`; document.getElementById('ch').textContent = s[0] + ' · ' + s[1]; document.getElementById('cp').textContent = s[2]; document.getElementById('cm').textContent = s[3]; [...stepsBox.children].forEach((b,q) => { b.classList.toggle('cur', q===i); b.classList.toggle('done', q<i); }); try { document.getElementById('st'+i).scrollIntoView({inline:'center', block:'nearest', behavior: reduced ? 'auto' : 'smooth'}); } catch(e){} }
+function caption(i){ const s = T[lang].steps[i]; document.getElementById('ck').textContent = `Station ${i} / 8 · subject ${SUBJ + 1} / ${SUBJECTS.length}: ${REAL.case}, slice ${REAL.z} (↑ ↓ change subject)`; document.getElementById('ch').textContent = s[0] + ' · ' + s[1]; document.getElementById('cp').textContent = s[2]; document.getElementById('cm').textContent = s[3]; [...stepsBox.children].forEach((b,q) => { b.classList.toggle('cur', q===i); b.classList.toggle('done', q<i); }); try { document.getElementById('st'+i).scrollIntoView({inline:'center', block:'nearest', behavior: reduced ? 'auto' : 'smooth'}); } catch(e){} }
 const startOf = i => DUR.slice(0,i).reduce((a,b)=>a+b,0);
 function jump(i){ time = startOf(i) + 0.001; cur = -1; held = false; playing = true; playTo = hold ? startOf(i) + DUR[i] / SUB - 0.001 : null; updatePlayBtn(); }
 function subOf(){ const [i, t] = stepAt(time); return [i, t, Math.min(SUB, Math.floor(t * SUB + 0.02))]; }   // a stop sits 1 ms before the boundary: count it as reached

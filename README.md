@@ -5,7 +5,7 @@
 **How the pipeline works, step by step: https://mendeltem.github.io/valdo-cmb-qc/architecture.html** -- from the T2* volume to the list of microbleeds,
 with the network diagram and what each design decision was worth.
 
-**Animated walk-through (3D): https://mendeltem.github.io/valdo-cmb-qc/flythrough.html** -- one volume travelling through the ten
+**Animated walk-through (3D): https://mendeltem.github.io/valdo-cmb-qc/flythrough.html** -- one volume travelling through the nine
 stations of the chain, built for lectures: step mode: → or a presenter clicker plays one sub-step at a time (four per station), ← goes back, space = continuous play, F = full screen, English.
 
 **Slice viewer (result quality control): https://mendeltem.github.io/valdo-cmb-qc/slices/** -- two large axial images per patient,
