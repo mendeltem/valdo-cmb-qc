@@ -150,7 +150,7 @@ const stationX = i => i * SPACING;
   const grid = new THREE.GridHelper(stationX(N-1)+40, 60, 0x1a2342, 0x141b33); grid.position.set(stationX(N-1)/2, -2.3, 0); scene.add(grid);
 })();
 const stationLabels = [];
-function placeStationLabels(){ stationLabels.forEach(s=>scene.remove(s)); stationLabels.length = 0; T[lang].steps.forEach((s,i)=>{ const sp = labelSprite(s[0], {size:30, scale:0.011}); sp.position.set(stationX(i) + TW*0.5 + 2.2, 0.6, -TD*0.35); scene.add(sp); stationLabels.push(sp);   // right of the image (screen right in the axial view) }); }
+function placeStationLabels(){ stationLabels.forEach(s=>scene.remove(s)); stationLabels.length = 0; T[lang].steps.forEach((s,i)=>{ const sp = labelSprite(s[0], {size:30, scale:0.011}); sp.position.set(stationX(i) + TW*0.5 + 2.2, 0.6, -TD*0.35); scene.add(sp); stationLabels.push(sp); }); }
 
 // ------------------------------------------------------------------ the travelling volume: the real slice in the middle, the other slices symbolic (outlines) to show the stack is 3D
 const vol = new THREE.Group(); scene.add(vol);
