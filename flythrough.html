@@ -150,7 +150,7 @@ const stationX = i => i * SPACING;
   const grid = new THREE.GridHelper(stationX(N-1)+40, 60, 0x1a2342, 0x141b33); grid.position.set(stationX(N-1)/2, -2.3, 0); scene.add(grid);
 })();
 const stationLabels = [];
-function placeStationLabels(){ stationLabels.forEach(s=>scene.remove(s)); stationLabels.length = 0; T[lang].steps.forEach((s,i)=>{ const sp = labelSprite(s[0], {size:30, scale:0.011}); sp.position.set(stationX(i), 4.6, 0); scene.add(sp); stationLabels.push(sp); }); }
+function placeStationLabels(){ stationLabels.forEach(s=>scene.remove(s)); stationLabels.length = 0; T[lang].steps.forEach((s,i)=>{ const sp = labelSprite(s[0], {size:30, scale:0.011}); sp.position.set(stationX(i) + 0.9, 0.6, -TD*0.5 - 1.6); scene.add(sp); stationLabels.push(sp); }); }
 
 // ------------------------------------------------------------------ the travelling volume: the real slice in the middle, the other slices symbolic (outlines) to show the stack is 3D
 const vol = new THREE.Group(); scene.add(vol);
@@ -348,7 +348,7 @@ function drawStep(i, u, raw){
     const P = nodes[a].clone().lerp(nodes[a+1], ease(f)); feat.position.set(unet.position.x + P.x, P.y + 0.25, P.z);
     setFeat(lvl, sp, o * enter * (1 - leave), a >= nE - 1);
     box.material.opacity = 0; maskShell.material.opacity = 0;
-    prob.visible = leave > 0; setStackOpacity(prob, 0.9*leave); prob.position.set(4.2 - 4.2*leave + 1.0, 0, 0); probLab.position.set(vol.position.x + 1.0, vol.position.y + 2.0, vol.position.z); probLab.material.opacity = leave; return; }
+    prob.visible = leave > 0; setStackOpacity(prob, 0.9*leave); prob.position.set(4.2 - 4.2*leave + 1.0, 0, 0); probLab.position.set(vol.position.x + 1.0, vol.position.y + 0.6, vol.position.z - TD*0.5 - 2.4); probLab.material.opacity = leave; return; }
   if (i === 5) { // training: real slices go one by one into the U-Net, the output lands next to its label, the loss falls; then candidate patches train the 3D CNN
     const o = fadeIn(seg(u, 0, 0.1)); const n = TRAIN.length; const nP = patchTiles.length;
     unetBlock.material.opacity = o; unetBlockLab.material.opacity = o; lossBar.material.opacity = o; lossLab.material.opacity = o;
@@ -372,8 +372,8 @@ function drawStep(i, u, raw){
       tileOpacity(g, o * fadeIn(phaseB * 4)); const c = k > 0.5 ? (g.userData.kind === 'true' ? 0x4ade80 : 0xf87171) : 0x8fa3d9; g.children[1].material.color.set(c);
       cnnBlock.material.emissiveIntensity = (k > 0.4 && k < 0.6) ? 1.2 : 0.3; });
     fine.visible = true; setStackOpacity(fine, 0.9); box.material.opacity = 0.7; box.scale.set(0.86, 1, 0.86); vol.position.y = 0.3; return; }
-  if (i === 6) { fine.visible = true; box.material.opacity = 0.7; box.scale.set(0.86,1,0.86); const k = seg(u, 0.05, 0.75); const steps = 12; const s = Math.floor(k*steps), f = k*steps - s; const col = s % 4, row = Math.floor(s/4); win.position.set(-1.2 + col*0.8, -0.9 + row*0.9, -1.4 + (f*2.6)); win.material.opacity = k < 1 ? 0.9 : 0; ghost.position.copy(win.position); ghost.material.opacity = k<1 ? 0.12 : 0; const m = seg(u, 0.75, 1); prob.visible = m > 0; setStackOpacity(prob, 0.9*m); setStackOpacity(fine, 0.9*(1-m)); probLab.position.set(vol.position.x, vol.position.y + 2.0, vol.position.z); probLab.material.opacity = m; return; }
-  if (i === 7) { prob.visible = u < 0.3; setStackOpacity(prob, 0.9*(1-seg(u,0.1,0.3))); probLab.position.set(vol.position.x, vol.position.y + 2.0, vol.position.z); probLab.material.opacity = 1-seg(u,0.1,0.3); csf.visible = u > 0.55; setStackOpacity(csf, 0.6*seg(u,0.55,0.75)*(1-seg(u,0.92,1))); box.material.opacity = 0.5; box.scale.set(0.86,1,0.86);
+  if (i === 6) { fine.visible = true; box.material.opacity = 0.7; box.scale.set(0.86,1,0.86); const k = seg(u, 0.05, 0.75); const steps = 12; const s = Math.floor(k*steps), f = k*steps - s; const col = s % 4, row = Math.floor(s/4); win.position.set(-1.2 + col*0.8, -0.9 + row*0.9, -1.4 + (f*2.6)); win.material.opacity = k < 1 ? 0.9 : 0; ghost.position.copy(win.position); ghost.material.opacity = k<1 ? 0.12 : 0; const m = seg(u, 0.75, 1); prob.visible = m > 0; setStackOpacity(prob, 0.9*m); setStackOpacity(fine, 0.9*(1-m)); probLab.position.set(vol.position.x + 0.9, vol.position.y + 0.6, vol.position.z - TD*0.5 - 2.4); probLab.material.opacity = m; return; }
+  if (i === 7) { prob.visible = u < 0.3; setStackOpacity(prob, 0.9*(1-seg(u,0.1,0.3))); probLab.position.set(vol.position.x + 0.9, vol.position.y + 0.6, vol.position.z - TD*0.5 - 2.4); probLab.material.opacity = 1-seg(u,0.1,0.3); csf.visible = u > 0.55; setStackOpacity(csf, 0.6*seg(u,0.55,0.75)*(1-seg(u,0.92,1))); box.material.opacity = 0.5; box.scale.set(0.86,1,0.86);
     fine.visible = true; setStackOpacity(fine, 0.9);
     spheres.forEach(s => { const o = fadeIn(seg(u,0.15,0.3)); const pulse = 1 + 0.15*Math.sin(u*40); s.mesh.material.opacity = o; s.mesh.scale.set(pulse,pulse,pulse); }); vesselMark.material.opacity = 0.9 * fadeIn(seg(u, 0.5, 0.7)); return; }
   if (i === 8) { // second stage: each candidate (image, FRST, probability around it) goes into the 3D CNN; a microbleed comes back green, the vessel red
@@ -418,7 +418,7 @@ function applyLang(){ const L = T[lang]; document.getElementById('t1').textConte
 document.addEventListener('keydown', e => { if (e.target.tagName === 'INPUT') return; if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); document.getElementById('play').click(); } else if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === 'ArrowDown') { e.preventDefault(); document.getElementById('next').click(); } else if (e.key === 'ArrowLeft' || e.key === 'PageUp' || e.key === 'ArrowUp') { e.preventDefault(); document.getElementById('prev').click(); } else if (e.key === 'f' || e.key === 'F') { document.getElementById('fs').click(); } else if (e.key === 'p' || e.key === 'P') { document.getElementById('talk').click(); } else if (e.key === 'h' || e.key === 'H') { document.getElementById('hold').click(); } else if (e.key === 'a' || e.key === 'A') { document.getElementById('view').click(); } else if (e.key === 'Home') { jump(0); } });
 
 // orbit by drag, zoom by wheel
-const VIEWS = {axial:{yaw:0.0, pitch:1.45, dist:12}, three:{yaw:0.55, pitch:0.32, dist:14}};
+const VIEWS = {axial:{yaw:0.0, pitch:1.45, dist:8.5}, three:{yaw:0.55, pitch:0.32, dist:13}};
 let view = 'axial'; try { view = localStorage.getItem('cmbfly_view') || 'axial'; } catch(e){}
 const orb = Object.assign({}, VIEWS[view]);
 let drag = null;
@@ -427,7 +427,7 @@ renderer.domElement.addEventListener('pointermove', e => { if (!drag) return; or
 document.getElementById('view').onclick = () => { view = view === 'axial' ? 'three' : 'axial'; Object.assign(orb, VIEWS[view]); try { localStorage.setItem('cmbfly_view', view); } catch(e){} updateViewBtn(); };
 function updateViewBtn(){ document.getElementById('view').textContent = view === 'axial' ? T[lang].three : T[lang].axial; document.getElementById('view').title = view === 'axial' ? 'A: switch to the 3D view' : 'A: back to the axial view'; }
 renderer.domElement.addEventListener('pointerup', () => drag = null); renderer.domElement.addEventListener('pointercancel', () => drag = null);
-renderer.domElement.addEventListener('wheel', e => { e.preventDefault(); orb.dist = Math.max(6, Math.min(30, orb.dist * (e.deltaY > 0 ? 1.1 : 0.9))); }, {passive:false});
+renderer.domElement.addEventListener('wheel', e => { e.preventDefault(); orb.dist = Math.max(4, Math.min(30, orb.dist * (e.deltaY > 0 ? 1.1 : 0.9))); }, {passive:false});
 window.addEventListener('resize', () => { renderer.setSize(stage.clientWidth, stage.clientHeight); camera.aspect = stage.clientWidth/stage.clientHeight; camera.updateProjectionMatrix(); });
 
 applyLang();
