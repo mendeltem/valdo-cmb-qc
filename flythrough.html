@@ -20,7 +20,7 @@
 :root[data-theme="light"]{ --bg:#0b1020; --panel:#121a30; --fg:#e8ecf7; --muted:#94a0c2; --line:#26325a; color-scheme:dark }
 html,body{height:100%}
 body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 var(--display);overflow:hidden}
-#stage{position:absolute;inset:0}
+#stage{position:absolute;inset:0;outline:none}
 canvas{display:block}
 #top{position:absolute;left:0;right:0;top:0;padding:calc(10px + env(safe-area-inset-top,0px)) 16px 0;display:flex;gap:10px;align-items:flex-start;justify-content:space-between;pointer-events:none}
 #top h1{margin:0;font-size:17px;font-weight:600;letter-spacing:.01em;text-wrap:balance}
@@ -49,7 +49,7 @@ body.talk #steps,body.talk #hint,body.talk #top .sub{display:none}body.talk #top
 @media (prefers-reduced-motion: reduce){#bar i{transition:none}}
 </style>
 
-<div id="stage"></div>
+<div id="stage" tabindex="0" aria-label="animation; arrow keys step"></div>
 <div id="top">
   <div><h1 id="t1">CMB Pipeline Flythrough</h1><div class="sub" id="t2">One T2* volume travelling through the ten stations of the microbleed chain</div></div>
   <div id="ctl">
@@ -435,6 +435,8 @@ renderer.domElement.addEventListener('wheel', e => { e.preventDefault(); orb.dis
 window.addEventListener('resize', () => { renderer.setSize(stage.clientWidth, stage.clientHeight); camera.aspect = stage.clientWidth/stage.clientHeight; camera.updateProjectionMatrix(); });
 
 applyLang();
+const focusStage = () => { try { document.getElementById('stage').focus({preventScroll:true}); } catch(e){} };
+focusStage(); window.addEventListener('load', focusStage); document.addEventListener('pointerdown', e => { if (!/input|select|textarea|button/i.test(e.target.tagName)) focusStage(); });
 if (hold) playTo = DUR[0] / SUB - 0.001;
 document.getElementById('hold').setAttribute('aria-pressed', hold ? 'true' : 'false');
 try { if (localStorage.getItem('cmbfly_talk') === '1') { document.body.classList.add('talk'); document.getElementById('talk').setAttribute('aria-pressed','true'); } } catch(e){}
