@@ -147,7 +147,6 @@ const stationX = i => i * SPACING;
   scene.add(new THREE.Line(g, new THREE.LineBasicMaterial({color:0x26325a})));
   const pad = new THREE.CylinderGeometry(2.6, 2.6, 0.12, 48);
   for (let i=0;i<N;i++){ const m = new THREE.Mesh(pad, new THREE.MeshStandardMaterial({color:0x121a30, roughness:0.9, metalness:0.1})); m.position.set(stationX(i), -2.2, 0); scene.add(m);
-    const ring = new THREE.Mesh(new THREE.RingGeometry(2.5, 2.62, 48), new THREE.MeshBasicMaterial({color:0x3b4c80, side:THREE.DoubleSide})); ring.rotation.x = -Math.PI/2; ring.position.set(stationX(i), -2.13, 0); scene.add(ring); ring.userData.ring = i;
     const lab = labelSprite(String(i), {size:34, color:'#ffb347', bg:'rgba(0,0,0,0)'}); lab.position.set(stationX(i), -1.6, 2.4); scene.add(lab);
   }
   // floor grid
@@ -212,6 +211,16 @@ const encB = [], decB = [], skips = [];
   });
   unet.children.filter(c => c.userData.unetLabel).forEach(l => l.material.opacity = 0);
 })();
+// the image as feature maps: one block per level, in-plane size halves from level 1 on, channels grow 32 -> 512 (one slab per 32 channels)
+function featureTexture(h, seed){ const W = 48, c = document.createElement('canvas'); c.width = c.height = W; const ctx = c.getContext('2d'); let r = seed; const rnd = () => (r = (r * 9301 + 49297) % 233280) / 233280;
+  ctx.fillStyle = `hsl(${h},45%,14%)`; ctx.fillRect(0,0,W,W); for (let k=0;k<26;k++){ const x = rnd()*W, y = rnd()*W, rad = 2 + rnd()*7; const g = ctx.createRadialGradient(x,y,0,x,y,rad); g.addColorStop(0,`hsla(${h},90%,${55+rnd()*30}%,0.95)`); g.addColorStop(1,`hsla(${h},90%,50%,0)`); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x,y,rad,0,Math.PI*2); ctx.fill(); }
+  const t = new THREE.CanvasTexture(c); t.magFilter = THREE.NearestFilter; return t; }
+const FEAT_TEX = [210, 190, 170, 40, 25].map((h, i) => featureTexture(h, 7 + i*13));
+const SPATIAL = [1, 0.7, 0.5, 0.36, 0.26], SLABS = [1, 2, 4, 8, 16];
+const feat = new THREE.Group(); scene.add(feat);
+const slabs = []; for (let j=0;j<16;j++){ const m = new THREE.Mesh(new THREE.BoxGeometry(TW*0.9, 0.11, TD*0.9), new THREE.MeshBasicMaterial({map:FEAT_TEX[0], transparent:true, opacity:0})); feat.add(m); slabs.push(m); const e = new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry), new THREE.LineBasicMaterial({color:0xdfe7ff, transparent:true, opacity:0})); m.add(e); }
+const featLab = labelSprite('', {size:24, color:'#e8ecf7', bg:'rgba(18,26,48,0.75)', scale:0.01}); feat.add(featLab); featLab.material.opacity = 0;
+function setFeat(lvl, sp, o, dec){ const n = SLABS[lvl]; slabs.forEach((m, j) => { const on = j < n; m.material.opacity = on ? o : 0; m.children[0].material.opacity = on ? o*0.9 : 0; m.material.map = FEAT_TEX[lvl]; m.position.y = j*0.14 - (n-1)*0.07; }); feat.scale.set(sp, 1, sp); featLab.position.y = n*0.14/2 + 0.45; featLab.material.opacity = o; const ch = 32 * n; const txt = `${ch} ${lang==='de'?'Kanäle':'channels'} · ${lvl===0 ? (lang==='de'?'volle Auflösung':'full resolution') : '1/'+Math.pow(2,lvl)+' in-plane'}`; if (featLab.userData.txt !== txt) { featLab.userData.txt = txt; const nl = labelSprite(txt, {size:24, color:'#e8ecf7', bg:'rgba(18,26,48,0.75)', scale:0.01}); featLab.material.map = nl.material.map; featLab.scale.copy(nl.scale); featLab.material.needsUpdate = true; } }
 function setUnet(o){ encB.concat(decB).forEach(b => b.material.opacity = o); skips.forEach(s => s.material.opacity = o*0.8); unet.children.filter(c=>c.userData.unetLabel).forEach(l => l.material.opacity = o); }
 
 // patches (station 6)
@@ -259,7 +268,6 @@ function render(now){
   const orbit = new THREE.Vector3(Math.sin(orb.yaw)*Math.cos(orb.pitch), Math.sin(orb.pitch), Math.cos(orb.yaw)*Math.cos(orb.pitch)).multiplyScalar(orb.dist);
   camera.position.lerp(target.clone().add(orbit), 0.08); camera.up.set(0, view==='axial' ? 0 : 1, view==='axial' ? -1 : 0); camera.lookAt(target);
   // station rings: current one glows
-  scene.children.forEach(c => { if (c.userData && c.userData.ring !== undefined) c.material.color.set(c.userData.ring === i ? 0xffb347 : (c.userData.ring < i ? 0x3b4c80 : 0x26325a)); });
   document.getElementById('barfill').style.width = (time/total*100).toFixed(2) + '%';
   renderer.render(scene, camera);
   requestAnimationFrame(render);
@@ -269,7 +277,7 @@ function resetAll(){
   showOnly(); setStackOpacity(thick, 0.9); thick.setKind('bias');
   box.material.opacity = 0.7; box.scale.set(1,1,1); maskShell.material.opacity = 0.18;
   spheres.forEach(s => { s.mesh.material.opacity = 0; s.mesh.material.color.set(s.color); s.mesh.material.emissive.set(s.color); s.mesh.scale.set(1,1,1); s.mesh.position.copy(s.mesh.userData.home || s.mesh.position); });
-  setUnet(0); patches.forEach(p => p.material.opacity = 0); win.material.opacity = 0; ghost.material.opacity = 0; cnn.material.opacity = 0; cnnLab.material.opacity = 0; if (table) table.material.opacity = 0;
+  setUnet(0); setFeat(0, 1, 0, false); patches.forEach(p => p.material.opacity = 0); win.material.opacity = 0; ghost.material.opacity = 0; cnn.material.opacity = 0; cnnLab.material.opacity = 0; if (table) table.material.opacity = 0;
   frst.position.set(0,0,0); fine.position.set(0,0,0); prob.position.set(0,0,0); fine.scale.set(1,1,1); frst.scale.set(1,1,1);
 }
 spheres.forEach(s => s.mesh.userData.home = s.mesh.position.clone());
@@ -281,13 +289,24 @@ function drawStep(i, u, raw){
   if (i === 1) { thick.visible = true; const flip = u > 0.55; thick.setKind(flip ? 'inv' : (u > 0.3 ? 'raw' : 'bias')); setStackOpacity(thick, 0.9); return; }
   if (i === 2) { const k = ease(seg(u, 0.1, 0.7)); thick.visible = k < 0.5; fine.visible = k >= 0.5; setStackOpacity(thick, 0.9*(1-k*2)); setStackOpacity(fine, 0.9*clamp01((k-0.5)*2)); box.scale.set(1 - 0.14*k, 1, 1 - 0.14*k); maskShell.material.opacity = 0.18*(1-k); thick.setKind('inv'); return; }
   if (i === 3) { fine.visible = frst.visible = true; const k = ease(seg(u, 0.1, 0.6)); fine.position.x = -1.2*k; frst.position.x = 1.6*k; setStackOpacity(frst, 0.9*k); box.scale.set(0.86,1,0.86); box.material.opacity = 0.7*(1-k); maskShell.material.opacity = 0; return; }
-  if (i === 4) { // through the U
+  if (i === 4) { // through the U: the image turns into feature blocks, level by level, and back
     const o = fadeIn(seg(u, 0, 0.15)); setUnet(o); const k = seg(u, 0.15, 1); const nE = encB.length;
-    encB.forEach((b,q) => { const on = k > (q+0.5)/(2*nE); b.material.emissiveIntensity = on ? 0.9 : 0.15; b.material.opacity = o*(on?1:0.6); });
-    decB.forEach((b,q) => { const on = k > 0.5 + (q+0.5)/(2*nE); b.material.emissiveIntensity = on ? 0.9 : 0.15; b.material.opacity = o*(on?1:0.6); });
+    const nodes = encB.map(b => b.position).concat(decB.slice().reverse().map(b => b.position));   // levels 0,1,2,3,4,3,2,1,0
+    const lvlOf = a => a < nE ? a : 2*(nE-1) - a;
+    encB.forEach((b,q) => { const on = k > (q+0.5)/(2*nE); b.material.emissiveIntensity = on ? 0.9 : 0.15; b.material.opacity = o*(on?0.9:0.35); });
+    decB.forEach((b,q) => { const on = k > 0.5 + (q+0.5)/(2*nE); b.material.emissiveIntensity = on ? 0.9 : 0.15; b.material.opacity = o*(on?0.9:0.35); });
     skips.forEach((s,q) => { s.material.opacity = (k > 0.5 + (nE-2-q+0.5)/(2*nE)) ? 0.9 : 0.15*o; });
-    fine.visible = frst.visible = true; const sh = clamp01(k*3); fine.scale.set(1-0.5*sh,1-0.5*sh,1-0.5*sh); frst.scale.set(1-0.5*sh,1-0.5*sh,1-0.5*sh); fine.position.set(-4.2 + 8.4*k, -0.2 - 2.2*Math.sin(Math.PI*k), 0); frst.position.set(-4.2 + 8.4*k + 0.3, -0.2 - 2.2*Math.sin(Math.PI*k), 0.3);
-    setStackOpacity(fine, 0.9*(1-seg(k,0.85,1))); setStackOpacity(frst, 0.9*(1-seg(k,0.85,1))); prob.visible = k > 0.85; setStackOpacity(prob, 0.9*seg(k,0.85,1)); prob.position.set(4.2 - 4.2*seg(k,0.85,1), 0, 0); box.material.opacity = 0; return; }
+    const enter = seg(k, 0, 0.08), leave = seg(k, 0.92, 1), walk = seg(k, 0.08, 0.92);
+    // the real stack flies in and fades as the first block appears
+    fine.visible = frst.visible = enter < 1; const sh = enter; fine.scale.set(1-0.4*sh,1-0.4*sh,1-0.4*sh); frst.scale.copy(fine.scale);
+    fine.position.set(-5.0 + (encB[0].position.x + 5.0)*sh, encB[0].position.y*sh, 0); frst.position.set(fine.position.x + 0.3, fine.position.y, 0.3);
+    setStackOpacity(fine, 0.9*(1-enter)); setStackOpacity(frst, 0.9*(1-enter));
+    const pos = walk * (nodes.length - 1); const a = Math.min(nodes.length - 2, Math.floor(pos)), f = pos - a;
+    const la = lvlOf(a), lb = lvlOf(a + 1); const lvl = f < 0.5 ? la : lb; const sp = SPATIAL[la] + (SPATIAL[lb] - SPATIAL[la]) * ease(f);
+    const P = nodes[a].clone().lerp(nodes[a+1], ease(f)); feat.position.set(unet.position.x + P.x, P.y + 0.25, P.z);
+    setFeat(lvl, sp, o * enter * (1 - leave), a >= nE - 1);
+    box.material.opacity = 0; maskShell.material.opacity = 0;
+    prob.visible = leave > 0; setStackOpacity(prob, 0.9*leave); prob.position.set(4.2 - 4.2*leave + 1.0, 0, 0); return; }
   if (i === 5) { fine.visible = true; box.material.opacity = 0.7; box.scale.set(0.86,1,0.86); const lift = ease(seg(u,0.1,0.5)); const back = ease(seg(u,0.8,1)); patches.forEach((p,q) => { const home = q < 3 && bleedPos[q] ? bleedPos[q] : new THREE.Vector3(-1.3 + q*0.5, -1.0 + (q%2)*1.4, 1.0 - q*0.5); const a = Math.PI*2*q/6; p.position.set(home.x + Math.cos(a)*2.8*lift*(1-back), home.y + 1.6*lift*(1-back), home.z + Math.sin(a)*2.8*lift*(1-back)); p.material.opacity = 0.8*fadeIn(u*4)*(1-back); }); return; }
   if (i === 6) { fine.visible = true; box.material.opacity = 0.7; box.scale.set(0.86,1,0.86); const k = seg(u, 0.05, 0.75); const steps = 12; const s = Math.floor(k*steps), f = k*steps - s; const col = s % 4, row = Math.floor(s/4); win.position.set(-1.2 + col*0.8, -0.9 + row*0.9, -1.4 + (f*2.6)); win.material.opacity = k < 1 ? 0.9 : 0; ghost.position.copy(win.position); ghost.material.opacity = k<1 ? 0.12 : 0; const m = seg(u, 0.75, 1); prob.visible = m > 0; setStackOpacity(prob, 0.9*m); setStackOpacity(fine, 0.9*(1-m)); return; }
   if (i === 7) { prob.visible = u < 0.3; setStackOpacity(prob, 0.9*(1-seg(u,0.1,0.3))); csf.visible = u > 0.55; setStackOpacity(csf, 0.6*seg(u,0.55,0.75)*(1-seg(u,0.92,1))); box.material.opacity = 0.5; box.scale.set(0.86,1,0.86);
