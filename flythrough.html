@@ -281,8 +281,8 @@ const cnnLab = labelSprite('3D CNN', {size:24, color:'#e8ecf7', bg:'rgba(0,0,0,0
 let table = null; function buildTable(){ if (table) scene.remove(table); const rows = ['#   volume     location   p max'].concat(REAL.table.map((t,i) => `${i+1}   ${String(t.mm3.toFixed(1)).padStart(5)} mm³   ${t.lage.padEnd(8)}  ${t.p.toFixed(2)}`)); rows.push(`–   missed by the model: ${REAL.fn.length} (reference only)`); if (HAS_FP) rows.push(`×   candidate ${REAL.fp_example.dz_from === REAL.fp_example.dz_to ? 'in' : 'near'} the slice rejected: p ${REAL.fp_example.pmax.toFixed(2)}, ${REAL.fp_example.zext} slice${REAL.fp_example.zext===1?'':'s'}`); table = tableSprite(rows); table.position.set(stationX(8)+4.6, 1.2, 0); table.material.opacity = 0; scene.add(table); }
 
 // ------------------------------------------------------------------ timeline
-const DUR = [3, 4, 6, 6, 30, 8, 10, 12, 18];   // seconds per station
-const SUBS = [1, 1, 2, 2, 10, 2, 3, 3, 4];   // arrow presses per station (each press plays one part, then stops)
+const DUR = [3, 4, 6, 3, 30, 8, 10, 12, 18];   // seconds per station
+const SUBS = [1, 1, 2, 1, 10, 2, 3, 3, 4];   // arrow presses per station (each press plays one part, then stops)
 const SUB = 4;   // fallback only   // seconds per station at 1x
 const total = DUR.reduce((a,b)=>a+b,0);
 let time = 0, playing = true, speed = 1, last = performance.now(); let hold = true, held = false, playTo = null;   // step mode is the only mode (no play/pause)
@@ -341,7 +341,7 @@ function drawStep(i, u, raw){
   if (i === 0) { thick.visible = true; setStackOpacity(thick, 0.9); box.material.opacity = 0.7; return; }   // the input is there from the first frame (a paused step 0 must not be empty)
   if (i === 1) { thick.visible = true; const flip = u > 0.62; thick.setKind(flip ? 'inv' : (u > 0.32 ? 'raw' : 'bias')); setStackOpacity(thick, 0.9); return; }
   if (i === 2) { const k = ease(seg(u, 0.1, 0.45)); const c = ease(seg(u, 0.55, 0.95)); thick.visible = k < 0.5; fine.visible = k >= 0.5; setStackOpacity(thick, 0.9*(1-k*2)); setStackOpacity(fine, 0.9*clamp01((k-0.5)*2)); thick.setKind('inv'); vol.scale.setScalar(1 + (CROP-1)*c); box.scale.set(1 - 0.11*c, 1, 1 - 0.11*c); return; }
-  if (i === 3) { fine.visible = frst.visible = true; const k = ease(seg(u, 0.1, 0.6)); fine.position.x = -(TW*0.5 + 0.8)*k; frst.position.x = (TW*0.5 + 0.8)*k; fine.children.forEach(c => { if (c.userData.sym) c.material.opacity *= (1 - k); }); frst.children.forEach(c => { if (c.userData.sym) c.material.opacity *= (1 - k); }); setStackOpacity(frst, 0.9*k); box.scale.set(0.86,1,0.86); box.material.opacity = 0.7*(1-k); maskShell.material.opacity = 0; return; }
+  if (i === 3) { fine.visible = frst.visible = true; const k = 1; fine.position.x = -(TW*0.5 + 0.8)*k; frst.position.x = (TW*0.5 + 0.8)*k; fine.children.forEach(c => { if (c.userData.sym) c.material.opacity *= (1 - k); }); frst.children.forEach(c => { if (c.userData.sym) c.material.opacity *= (1 - k); }); setStackOpacity(frst, 0.9*k); box.scale.set(0.86,1,0.86); box.material.opacity = 0.7*(1-k); maskShell.material.opacity = 0; return; }
   if (i === 4) { // through the U: the image turns into feature blocks, level by level, and back
     const o = fadeIn(seg(u, 0, 0.15)); setUnet(o); const k = seg(u, 0.15, 1); const nE = encB.length;
     const nodes = encB.map(b => b.position).concat(decB.slice().reverse().map(b => b.position));   // levels 0,1,2,3,4,3,2,1,0
