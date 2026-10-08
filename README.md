@@ -6,7 +6,7 @@
 with the network diagram and what each design decision was worth.
 
 **Animated walk-through (3D): https://mendeltem.github.io/valdo-cmb-qc/flythrough.html** -- one volume travelling through the ten
-stations of the chain, built for lectures: holds after every station, → or a presenter clicker continues, F = full screen, English/German.
+stations of the chain, built for lectures: holds after every station, → or a presenter clicker continues, F = full screen, English.
 
 **Slice viewer (result quality control): https://mendeltem.github.io/valdo-cmb-qc/slices/** -- two large axial images per patient,
 reference annotation on the left, the overlays of the model variants on the right (dropdown), scroll = z; volumes in ml, works on phones.
