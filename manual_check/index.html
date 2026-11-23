@@ -355,8 +355,9 @@ function build3D() {
       const pts = cur.vox3[name].filter(p => p[3] == focus); if (!pts.length) continue;
       const f = name == "det" ? 0.62 : 0.96;
       const geo = new THREE.BoxGeometry(sx * f, sz * f, sy * f);
-      const mat = name == "det" ? new THREE.MeshLambertMaterial({color: COL3[name], transparent: !focus, opacity: focus ? 1 : 0.35})
-                                : new THREE.MeshLambertMaterial({color: COL3[name], transparent: true, opacity: focus ? 0.45 : 0.18, depthWrite: false});
+      const col = blind ? 0xb8bec8 : COL3[name];   // blind mode greys the 3D cubes too
+      const mat = name == "det" ? new THREE.MeshLambertMaterial({color: col, transparent: !focus, opacity: focus ? 1 : 0.35})
+                                : new THREE.MeshLambertMaterial({color: col, transparent: true, opacity: focus ? 0.45 : 0.18, depthWrite: false});
       const mesh = new THREE.InstancedMesh(geo, mat, pts.length); const m4 = new THREE.Matrix4();
       pts.forEach((p, i) => { m4.makeTranslation(p[0] * sx, p[2] * sz, -p[1] * sy); mesh.setMatrixAt(i, m4); });
       mesh.renderOrder = name == "det" ? 0 : 1; R3.grp.add(mesh); R3.meshes.push(mesh);
@@ -386,7 +387,8 @@ document.getElementById("rname").value = RS.rater || ""; document.getElementById
 function rnext() { const V = visible(); const i = V.indexOf(cur); for (let k = 1; k <= V.length; k++) { const f = V[(i + k) % V.length]; if (!RS.ans[f.id]) { select(f.id); return; } } }
 document.getElementById("rnext").onclick = rnext;
 function toggleBlind() { blind = !blind; document.body.classList.toggle("blind", blind); document.getElementById("rblind").textContent = "Blind mode: " + (blind ? "ON" : "OFF") + " (B)";
-  if (blind) { selC = new Set(["TP", "FP", "FN"]); selS = new Set(SIZES); buildStrip(); if (ov) toggleOv(); } }
+  if (blind) { selC = new Set(["TP", "FP", "FN"]); selS = new Set(SIZES); buildStrip(); if (ov) toggleOv(); }
+  build3D(); rshow(); }
 document.getElementById("rblind").onclick = toggleBlind;
 function rrows() {
   const only = document.getElementById("rscope").value == "answered", FF = only ? F.filter(f => RS.ans[f.id]) : F;
