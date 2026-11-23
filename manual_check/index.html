@@ -68,6 +68,10 @@ body.noov .ov{visibility:hidden}
 .zline{position:absolute;left:0;right:0;height:0;border-top:1px dashed var(--ax);opacity:.85}
 .ring{position:absolute;width:34px;height:34px;margin:-17px 0 0 -17px;border:3px solid #ffd166;border-radius:50%;box-shadow:0 0 0 1px #000,inset 0 0 0 1px #000;pointer-events:none;z-index:5}
 .ring.off{border-style:dashed;opacity:.8}
+.view.whole .layer,.view.whole .zline0,.view.whole .tick{display:none}.view:not(.whole) .wb{display:none}
+.wb{position:absolute;inset:0;background-repeat:no-repeat;background-size:contain;background-position:center}
+.wbz{position:absolute;left:0;right:0;height:0;border-top:1px dashed var(--ax);opacity:.85}
+button.on{background:#3a4a6a;border-color:#8fb3ff}
 .ori{position:absolute;color:#ffd166;font:700 13px system-ui;text-shadow:0 0 3px #000;z-index:4}
 .ctl{display:flex;gap:6px;align-items:center;margin:6px 0;flex-wrap:wrap}
 .ctl .v{min-width:140px;color:var(--muted)}
@@ -126,12 +130,12 @@ footer{padding:14px 16px 30px;font-size:12px;color:#8a909b;border-top:1px solid 
  <div id="main">
   <div class="col">
    <h3 title="axial slice, 48 x 48 mm around the centre; starts at zoom 1.5x">Axial (radiological: patient right on screen left)</h3>
-   <div class="view" id="vax"><div class="zoomer"><div class="layer" id="axi"></div><div class="layer ov" id="axo"></div></div><div class="ring" id="rax" title="the selected finding"></div>
+   <div class="view" id="vax"><div class="zoomer"><div class="layer" id="axi"></div><div class="layer ov" id="axo"></div><div class="wb" id="wbi"></div><div class="wb ov" id="wbo"></div></div><div class="ring" id="rax" title="the selected finding"></div>
     <span class="ori" style="left:50%;top:3px">A</span><span class="ori" style="left:4px;top:47%">R</span><span class="ori" style="right:4px;top:47%">L</span></div>
    <div class="ctl">
     <button id="zdn" title="lower slice (key Down / wheel)">slice &minus;</button><button id="zup" title="higher slice (key Up / wheel)">slice +</button>
     <span class="v" id="zlab"></span><button id="zc">centre</button>
-    <button id="zmo" title="zoom out (key -)">zoom &minus;</button><button id="zmi" title="zoom in (key +)">zoom +</button><span class="v" id="zmlab"></span>
+    <button id="wbb" title="whole axial slice of the brain; wheel moves through every slice (key W); zoom - at 1x also switches">whole brain (W)</button><button id="zmo" title="zoom out (key -); below 1x the whole brain">zoom &minus;</button><button id="zmi" title="zoom in (key +)">zoom +</button><span class="v" id="zmlab"></span>
    </div>
    <div class="legend"><span><i class="sw" style="background:var(--ref)"></i>reference (VALDO annotation)</span><span><i class="sw" style="background:var(--det)"></i>detector</span><span><i class="sw" style="background:var(--ax)"></i>axial level</span></div>
   </div>
@@ -148,9 +152,9 @@ footer{padding:14px 16px 30px;font-size:12px;color:#8a909b;border-top:1px solid 
   </div>
   <div class="col">
    <h3>Coronal (patient right on screen left)</h3>
-   <div class="view" id="vcor"><div class="zoomer"><div class="layer" id="cori"></div><div class="layer ov" id="coro"></div><div class="zline" id="corz"></div></div><div class="ring" id="rcor"></div><span class="ori" style="left:50%;top:3px">S</span></div>
+   <div class="view" id="vcor"><div class="zoomer"><div class="layer" id="cori"></div><div class="layer ov" id="coro"></div><div class="zline zline0" id="corz"></div><div class="wb" id="wci"></div><div class="wb ov" id="wco"></div><div class="wb wbz" id="wcz"></div></div><div class="ring" id="rcor"></div><span class="ori" style="left:50%;top:3px">S</span></div>
    <h3>Sagittal (anterior on screen left)</h3>
-   <div class="view" id="vsag"><div class="zoomer"><div class="layer" id="sagi"></div><div class="layer ov" id="sago"></div><div class="zline" id="sagz"></div></div><div class="ring" id="rsag"></div><span class="ori" style="left:50%;top:3px">S</span><span class="ori" style="left:4px;top:47%">A</span></div>
+   <div class="view" id="vsag"><div class="zoomer"><div class="layer" id="sagi"></div><div class="layer ov" id="sago"></div><div class="zline zline0" id="sagz"></div><div class="wb" id="wsi"></div><div class="wb ov" id="wso"></div><div class="wb wbz" id="wsz"></div></div><div class="ring" id="rsag"></div><span class="ori" style="left:50%;top:3px">S</span><span class="ori" style="left:4px;top:47%">A</span></div>
   </div>
  </div>
 </section>
@@ -175,7 +179,12 @@ RAS with one transform for image, reference and detections, shown radiologically
 it is turned back for display (microbleeds dark). Window per case: 1st&ndash;99.5th percentile of the brain voxels. Crops 48 &times; 48 mm, upsampled 3&times;
 in-plane by cubic spline and saved as lossless PNG; outlines from voxel replication (reference 2-pixel ring inside, detector 2-pixel ring
 outside). Thumbnails 16 &times; 16 mm.</p>
-<p><b>Keys.</b> O overlays, &larr; &rarr; finding, &uarr; &darr; or wheel slice, + &minus; zoom, Y / N answer, U next unanswered, B blind mode.</p>
+<p><b>Whole brain.</b> Button or key W, or zoom &minus; at 1x: all three views switch together. The axial view shows the whole slice of the case
+(every slice that contains brain, on the native 0.5 mm grid, same window and orientation, stored as JPEG quality 95 to keep the site small); the
+wheel then moves through all slices and zoom + zooms around the finding. Coronal and sagittal show the whole slice through the finding centre
+(square in mm; dashed line = current axial level). Outlines 1 pixel. The yellow ring marks the selected finding in every view and mode, also with
+overlays off (dashed on axial slices other than its centre slice).</p>
+<p><b>Keys.</b> W whole brain, O overlays, &larr; &rarr; finding, &uarr; &darr; or wheel slice, + &minus; zoom, Y / N answer, U next unanswered, B blind mode.</p>
 <p><b>Software.</b> Python 3.12.15, NumPy 2.2.6, SciPy 1.18.1, nibabel 5.4.2, Pillow 12.3.0, three.js r128 and SheetJS 0.18.5 (local files); built 23.11.2026.</p>
 </div>
 <footer>
@@ -267,24 +276,39 @@ function select(id) {
     document.getElementById(i).style.backgroundImage = 'url("' + img(cur, s) + '")';
   for (const i of ["axi", "axo"]) document.getElementById(i).style.backgroundSize = "100% " + (2 * D.DZ + 1) * 100 + "%";
   for (const i of ["cori", "coro", "sagi", "sago"]) document.getElementById(i).style.backgroundSize = "100% 100%";
-  updZ(); build3D(); rshow();
+  updZ(); if (whole) setZoom(); build3D(); rshow();
 }
+let whole = false;
+function wbPos() { const c = C[cur.case], X = c.shape[0], Y = c.shape[1], s = 1 / Math.max(X, Y);   // background-size: contain in a square view; radiological flip
+  return [((1 - X * s) / 2 + (X - 1 - cur.c[0] + 0.5) * s) * 100, ((1 - Y * s) / 2 + (Y - 1 - cur.c[1] + 0.5) * s) * 100]; }
+function mmPos(Wmm, Hmm, px, py) { const s = 1 / Math.max(Wmm, Hmm); return [((1 - Wmm * s) / 2 + px * s) * 100, ((1 - Hmm * s) / 2 + py * s) * 100]; }
+function corPos(z) { const c = C[cur.case], X = c.shape[0], Z = c.shape[2]; return mmPos(X * 0.5, Z, (X - 1 - cur.c[0] + 0.5) * 0.5, Z - 1 - z + 0.5); }
+function sagPos(z) { const c = C[cur.case], Y = c.shape[1], Z = c.shape[2]; return mmPos(Y * 0.5, Z, (Y - 1 - cur.c[1] + 0.5) * 0.5, Z - 1 - z + 0.5); }
+function updWhole() { const z = cur.c[2] + dz, f = "img/" + cur.case + "/full/z" + String(z).padStart(3, "0");
+  document.getElementById("wbi").style.backgroundImage = 'url("' + f + '.jpg")'; document.getElementById("wbo").style.backgroundImage = 'url("' + f + '_o.png")';
+  for (const [v, tag, pos] of [["c", "_corW", corPos], ["s", "_sagW", sagPos]]) {
+    document.getElementById("w" + v + "i").style.backgroundImage = 'url("' + img(cur, tag + ".jpg") + '")'; document.getElementById("w" + v + "o").style.backgroundImage = 'url("' + img(cur, tag + "_o.png") + '")';
+    document.getElementById("w" + v + "z").style.top = pos(z)[1] + "%"; } }
 function updZ() {
+  if (whole) updWhole();
   const k = D.DZ - dz;   // strip runs from the lowest slice (top) to the highest; dz > 0 = higher slice
   for (const i of ["axi", "axo"]) document.getElementById(i).style.backgroundPosition = "0 " + ((D.DZ + dz) / (2 * D.DZ) * 100) + "%";
   const z = cur.slice + dz, out = z < 1 || z > cur.nz;
-  document.getElementById("zlab").textContent = "slice " + z + " (" + (dz >= 0 ? "+" : "") + dz + " mm)" + (out ? " outside" : "");
+  document.getElementById("zlab").textContent = "slice " + z + " (" + (dz >= 0 ? "+" : "") + dz + " mm)" + (out ? " outside" : "") + (whole ? " · whole brain" : "");
   const fr = (D.HZ - 0.5 - dz) / (2 * D.HZ) * 100;
   for (const i of ["corz", "sagz"]) document.getElementById(i).style.top = fr + "%";
   setPlane(); rings();
 }
-function rings() { const oz = (D.HZ - 0.5) / (2 * D.HZ) * 100;   // ring always on the selected finding (same as the grey-zone page, 23.11.)
-  for (const [id, y] of [["rax", (D.HX - 0.5) / (2 * D.HX) * 100], ["rcor", oz], ["rsag", oz]]) { const r = document.getElementById(id); r.style.left = (D.HX - 0.5) / (2 * D.HX) * 100 + "%"; r.style.top = y + "%"; r.classList.toggle("off", id == "rax" && dz != 0); } }
+function rings() { if (!cur) return; const o = (D.HX - 0.5) / (2 * D.HX) * 100, oz = (D.HZ - 0.5) / (2 * D.HZ) * 100;   // ring always on the selected finding (23.11.)
+  const P = whole ? [["rax", wbPos()], ["rcor", corPos(cur.c[2])], ["rsag", sagPos(cur.c[2])]] : [["rax", [o, o]], ["rcor", [o, oz]], ["rsag", [o, oz]]];
+  for (const [id, [x, y]] of P) { const r = document.getElementById(id); r.style.left = x + "%"; r.style.top = y + "%"; r.classList.toggle("off", id == "rax" && dz != 0); } }
 function setZoom() {
   const o = (D.HX - 0.5) / (2 * D.HX) * 100, oz = (D.HZ - 0.5) / (2 * D.HZ) * 100;   // = centre voxel after the radiological flip; the ring sits here
-  document.querySelector("#vax .zoomer").style.cssText = "transform:scale(" + zoom + ");transform-origin:" + o + "% " + o + "%";
-  for (const v of ["#vcor", "#vsag"]) document.querySelector(v + " .zoomer").style.cssText = "transform:scale(" + zoom + ");transform-origin:" + o + "% " + oz + "%";
-  document.getElementById("zmlab").textContent = "zoom " + zoom + "x (" + Math.round(2 * D.HX * D.zooms[0] / zoom) + " mm)";
+  const [wx, wy] = whole && cur ? wbPos() : [o, o];
+  document.querySelector("#vax .zoomer").style.cssText = "transform:scale(" + zoom + ");transform-origin:" + wx + "% " + wy + "%";
+  for (const [v, pos] of [["#vcor", corPos], ["#vsag", sagPos]]) { const [px, py] = whole && cur ? pos(cur.c[2]) : [o, oz];
+    document.querySelector(v + " .zoomer").style.cssText = "transform:scale(" + zoom + ");transform-origin:" + px + "% " + py + "%"; }
+  document.getElementById("zmlab").textContent = whole ? "whole brain, zoom " + zoom + "x" : "zoom " + zoom + "x (" + Math.round(2 * D.HX * D.zooms[0] / zoom) + " mm)"; rings();
 }
 function ticks() {
   const add = (vid, fx, fy) => { const v = document.getElementById(vid);
@@ -293,9 +317,12 @@ function ticks() {
       const t = document.createElement("div"); t.className = "tick"; t.style.cssText = st; v.appendChild(t); } };
   add("vax", 50, 50); add("vcor", 50, (D.HZ - 0.5) / (2 * D.HZ) * 100); add("vsag", 50, (D.HZ - 0.5) / (2 * D.HZ) * 100);
 }
-function stepZ(d) { dz = Math.max(-D.DZ, Math.min(D.DZ, dz + d)); updZ(); }
+function stepZ(d) { if (!cur) return; if (whole) { const c = C[cur.case]; dz = Math.max(c.fz[0] - cur.c[2], Math.min(c.fz[1] - cur.c[2], dz + d)); } else dz = Math.max(-D.DZ, Math.min(D.DZ, dz + d)); updZ(); }
+function setWhole(on) { whole = on; for (const v of ["vax", "vcor", "vsag"]) document.getElementById(v).classList.toggle("whole", on); document.getElementById("wbb").classList.toggle("on", on);
+  if (!on) dz = Math.max(-D.DZ, Math.min(D.DZ, dz)); zoom = on ? 1 : 1.5; setZoom(); if (cur) updZ(); }
 function stepF(d) { const V = visible(); if (!V.length) return; let i = V.indexOf(cur); i = (i + d + V.length) % V.length; select(V[i].id); }
-function setZ(z) { zoom = Math.max(1, Math.min(6, z)); setZoom(); }
+function setZ(z) { if (!whole && z < 1) { setWhole(true); return; } zoom = Math.max(1, Math.min(whole ? 8 : 6, z)); setZoom(); }
+document.getElementById("wbb").onclick = () => setWhole(!whole);
 document.getElementById("zup").onclick = () => stepZ(1); document.getElementById("zdn").onclick = () => stepZ(-1); document.getElementById("zc").onclick = () => { dz = 0; updZ(); };
 document.getElementById("zmi").onclick = () => setZ(zoom + 0.5); document.getElementById("zmo").onclick = () => setZ(zoom - 0.5);
 document.getElementById("vax").addEventListener("wheel", e => { e.preventDefault(); stepZ(e.deltaY < 0 ? 1 : -1); }, {passive: false});
@@ -308,7 +335,7 @@ document.addEventListener("keydown", e => {
   if (e.target.closest("input,textarea,select")) return;
   if (e.key == "o" || e.key == "O") toggleOv(); else if (e.key == "ArrowRight") stepF(1); else if (e.key == "ArrowLeft") stepF(-1);
   else if (e.key == "ArrowUp") { e.preventDefault(); stepZ(1); } else if (e.key == "ArrowDown") { e.preventDefault(); stepZ(-1); }
-  else if (e.key == "+" || e.key == "=") setZ(zoom + 0.5); else if (e.key == "-") setZ(zoom - 0.5); else if (e.key == "Escape") document.getElementById("methods").style.display = "none";
+  else if (e.key == "w" || e.key == "W") setWhole(!whole); else if (e.key == "+" || e.key == "=") setZ(zoom + 0.5); else if (e.key == "-") setZ(zoom - 0.5); else if (e.key == "Escape") document.getElementById("methods").style.display = "none";
   else if (e.key == "y" || e.key == "Y") rset("yes"); else if (e.key == "n" || e.key == "N") rset("no"); else if (e.key == "u" || e.key == "U") rnext(); else if (e.key == "b" || e.key == "B") toggleBlind();
 });
 // ---------------- 3D (three.js r128)
@@ -409,5 +436,6 @@ document.getElementById("rcsv").onclick = () => { const [fr] = rrows(); if (!fr.
   const csv = [k.join(",")].concat(fr.map(r => k.map(x => '"' + String(r[x]).replace(/"/g, '""') + '"').join(","))).join("\n");
   const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], {type: "text/csv"})); a.download = fname("csv"); a.click(); };
 ticks(); setZoom(); init3D(); buildStrip();
+if (location.hash.includes("whole")) setWhole(true);   // link straight into the whole-brain view
 </script>
 </body></html>
