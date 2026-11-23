@@ -1,6 +1,16 @@
 # VALDO microbleed quality control
 
-**Open the page: https://mendeltem.github.io/valdo-cmb-qc/**
+## ▶ Menu: https://mendeltem.github.io/valdo-cmb-qc/
+
+The menu opens every page. The two pages for checking the results:
+
+- **Findings check: https://mendeltem.github.io/valdo-cmb-qc/manual_check/** -- overview statistics (sensitivity, false microbleeds per scan,
+  by size class and site), then every correct, missed and false microbleed of the two-stage detector as a tile with axial, coronal,
+  sagittal and 3D view; filter by category and size, rate each finding yourself, download your answers as Excel.
+- **Slice viewer: https://mendeltem.github.io/valdo-cmb-qc/qc/** -- two large axial images per case, reference left, the stage-1
+  U-Net (two-seed ensemble with the CSF rule, without stage 2) right, coloured by verdict (green detected, yellow false alarm, red missed); lossless PNG, mouse wheel = slice.
+
+More pages:
 
 **How the pipeline works, step by step: https://mendeltem.github.io/valdo-cmb-qc/architecture.html** -- from the T2* volume to the list of microbleeds,
 with the network diagram and what each design decision was worth.
@@ -8,8 +18,7 @@ with the network diagram and what each design decision was worth.
 **Animated walk-through (3D): https://mendeltem.github.io/valdo-cmb-qc/flythrough.html** -- one volume travelling through the nine
 stations of the chain, built for lectures: step mode: → or a presenter clicker plays one sub-step at a time (four per station), ← goes back, space = continuous play, F = full screen, English.
 
-**Slice viewer (result quality control): https://mendeltem.github.io/valdo-cmb-qc/slices/** -- two large axial images per patient,
-reference annotation on the left, the overlays of the model variants on the right (dropdown), scroll = z; volumes in ml, works on phones.
+**Single-file viewer (20 cases with most lesions, works offline): https://mendeltem.github.io/valdo-cmb-qc/viewer_single.html**
 
 **Code, environment and reproduction commands: https://github.com/mendeltem/cmb-valdo-chain** (README with install, data layout and the
 numbered pipeline scripts).

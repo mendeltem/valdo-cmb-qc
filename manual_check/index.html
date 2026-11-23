@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VALDO findings check</title>
+<style>
+:root{--bg:#121418;--panel:#1b1e24;--line:#343945;--text:#e6e8ec;--muted:#9aa1ad;--det:#E8178A;--ref:#F4D03F;--tp:#3BB273;--fp:#E8178A;--fn:#8f6bff;--ax:#33d6e0;--acc:#5b8def}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,sans-serif}
+a{color:#8fb3ff}
+header{display:flex;align-items:center;gap:12px;padding:8px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap;position:sticky;top:0;background:var(--bg);z-index:20}
+header h1{font-size:16px;margin:0}
+.home{font-weight:600;text-decoration:none;border:1px solid #4a5160;border-radius:5px;padding:4px 10px;color:var(--text)}
+.sp{flex:1}
+button,select,input{background:#2a2f39;color:var(--text);border:1px solid #4a5160;border-radius:5px;padding:5px 10px;font:600 13px system-ui;cursor:pointer}
+input{cursor:text;font-weight:400}
+button.on{background:#3d4a63;border-color:#8ea3c8}
+section{padding:12px 16px}
+h2{font-size:15px;margin:0 0 10px;color:#cfd5df;letter-spacing:.02em}
+/* overview */
+#cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.card .v{font-size:26px;font-weight:700;line-height:1.1}
+.card .l{font-size:12px;color:var(--muted)}
+.card .s{font-size:12px;color:var(--muted);margin-top:2px}
+.tables{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;margin-top:12px}
+table{border-collapse:collapse;width:100%;background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden;font-size:13px}
+th,td{padding:5px 9px;text-align:right;border-bottom:1px solid #2a2f39}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--muted);font-weight:600;background:#20242c}
+.bar{display:inline-block;height:8px;border-radius:2px;background:var(--tp);vertical-align:middle;margin-left:6px}
+.note{font-size:12px;color:var(--muted);margin-top:8px}
+/* check */
+#check{border-top:1px solid var(--line)}
+#filters{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start;margin-bottom:8px}
+.fgrp{display:flex;flex-direction:column;gap:4px}
+.fgrp .gh{font-size:11px;letter-spacing:.05em;color:var(--muted);font-weight:700}
+.fgrp .row{display:flex;gap:6px;flex-wrap:wrap}
+#filters button{display:flex;align-items:center;gap:6px;font-weight:500;opacity:.5}
+#filters button.on{opacity:1}
+#filters button .n{color:var(--muted);font-weight:400}
+.dot{width:11px;height:11px;border-radius:50%;display:inline-block}
+#strip{display:flex;gap:6px;overflow-x:auto;padding:8px 2px;background:#0f1114;border:1px solid var(--line);border-radius:6px;min-height:150px;align-items:flex-start;scrollbar-color:#4a5160 #0f1114}
+.pat{flex:none;display:flex;flex-direction:column;gap:3px;padding:0 6px;border-right:1px dashed var(--line)}
+.pat .ph{font-size:11px;color:var(--muted);white-space:nowrap}
+.pat .tiles{display:flex;gap:6px}
+.tile{flex:none;width:396px;border:3px solid #555;border-radius:5px;cursor:pointer;background:#000;position:relative}
+.tile img{display:block;width:390px;height:128px}
+.tile .tl{font-size:11px;padding:1px 4px;background:#0009;white-space:nowrap;overflow:hidden}
+.tile.sel{outline:2px solid #fff;outline-offset:1px}
+.c-TP{border-color:var(--tp)}.c-FP{border-color:var(--fp)}.c-FN{border-color:var(--fn)}
+.tile .rb{position:absolute;top:2px;right:2px;font:700 11px system-ui;padding:1px 5px;border-radius:3px}
+.rb.yes{background:#1f6b3a}.rb.no{background:#7a2633}
+#info{display:flex;gap:18px;flex-wrap:wrap;align-items:baseline;padding:8px 2px}
+#info .big{font-size:17px;font-weight:700}
+#info span[title]{border-bottom:1px dotted #777;cursor:help}
+#rate{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:4px 0 10px;padding:8px 12px;background:#1b2230;border:1px solid #3a4a66;border-radius:6px}
+#rate .q{font-weight:700;font-size:15px}
+#rate button.yes.on{background:#1f6b3a;border-color:#4fd18a}#rate button.no.on{background:#7a2633;border-color:#ff8a9a}
+body.blind .tile{border-color:#555!important}body.blind .tile .tl,body.blind #info .big,body.blind #info .rinfo,body.blind #filters{visibility:hidden}
+#main{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px}
+.col{min-width:0}
+.col h3{margin:4px 0;font-size:13px;color:var(--muted);font-weight:600}
+.view{position:relative;width:min(36vw,calc(100vh - 260px));aspect-ratio:1/1;overflow:hidden;background:#000;border:1px solid var(--line);border-radius:4px}
+#vcor,#vsag{width:min(22vw,calc(50vh - 150px))}
+.zoomer{position:absolute;inset:0}
+.layer{position:absolute;inset:0;background-repeat:no-repeat;image-rendering:auto}
+body.noov .ov{visibility:hidden}
+.tick{position:absolute;width:0;height:0;border:7px solid transparent;z-index:3}
+.zline{position:absolute;left:0;right:0;height:0;border-top:1px dashed var(--ax);opacity:.85}
+.ring{position:absolute;width:34px;height:34px;margin:-17px 0 0 -17px;border:3px solid #ffd166;border-radius:50%;box-shadow:0 0 0 1px #000,inset 0 0 0 1px #000;pointer-events:none;z-index:5}
+.ring.off{border-style:dashed;opacity:.8}
+.ori{position:absolute;color:#ffd166;font:700 13px system-ui;text-shadow:0 0 3px #000;z-index:4}
+.ctl{display:flex;gap:6px;align-items:center;margin:6px 0;flex-wrap:wrap}
+.ctl .v{min-width:140px;color:var(--muted)}
+#three{width:min(100%,calc(100vh - 260px));aspect-ratio:1/1;background:#0b0c0f;border:1px solid var(--line);border-radius:4px;position:relative;cursor:grab}
+#three canvas{display:block;width:100%;height:100%}
+#three .msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted)}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:6px}
+.sw{display:inline-block;width:12px;height:12px;border-radius:2px;vertical-align:-2px;margin-right:4px}
+details.help{margin:0 0 10px;padding:6px 12px;background:#14202c;border:1px solid #2d4a63;border-radius:6px;font-size:13px}
+details.help summary{cursor:pointer;font-weight:700}
+#methods{display:none;position:fixed;inset:5% 10%;z-index:60;background:#181a1f;border:1px solid #556;padding:18px 24px;overflow:auto;line-height:1.5}
+footer{padding:14px 16px 30px;font-size:12px;color:#8a909b;border-top:1px solid var(--line)}
+@media (max-width:900px){#main{grid-template-columns:1fr}.view,#vcor,#vsag,#three{width:100%}}
+</style></head><body>
+<header>
+ <a class="home" href="../" title="back to the menu">&larr; Menu</a>
+ <h1>VALDO 2021 Task 2: what the detector found, missed and added</h1>
+ <span class="sp"></span>
+ <button id="ovbtn" title="show / hide all outlines (key O)">Overlays: ON (O)</button>
+ <button id="mbtn" title="how this page was made">? Methods</button>
+</header>
+
+<section id="overview">
+ <h2>Overview</h2>
+ <div id="cards"></div>
+ <div class="tables"><div id="tsize"></div><div id="tsite"></div></div>
+ <p class="note" id="ovnote"></p>
+</section>
+
+<section id="check">
+ <h2>Check every finding</h2>
+ <details class="help"><summary>What do I see, and what can I do here? (click)</summary>
+ <p>Every <b>finding</b> is one microbleed-sized spot: a <b style="color:var(--tp)">correct</b> detection (TP, touches a reference microbleed),
+ an <b style="color:var(--fp)">extra</b> detection (FP, touches none) or a <b style="color:var(--fn)">missed</b> reference microbleed (FN).
+ Choose categories and size classes above the tile strip; click a tile to open it. The large views show the axial slices (mouse wheel or
+ &uarr; &darr;: &plusmn;6 mm), coronal and sagittal through the centre and the 3D neighbourhood. Outlines: <b style="color:var(--ref)">yellow</b> =
+ reference annotation, <b style="color:var(--det)">magenta</b> = detector.</p>
+ <p><b>Your own rating.</b> Answer <b>Is this a microbleed?</b> with Yes (Y) or No (N) for as many findings as you like. Answers stay in this
+ browser only. <b>Download Excel</b> writes your answers (only the answered ones, or all findings) with sheets <i>findings</i> and
+ <i>cases</i>. <b>Blind mode (B)</b> hides category and source so the answer is not influenced.</p></details>
+ <div id="filters"></div>
+ <div id="strip" title="one tile per finding: axial | coronal | sagittal through the centre (16 x 16 mm); border colour = category; click to open"></div>
+ <div id="info"></div>
+ <div id="rate">
+  <span class="q">Is this a microbleed?</span>
+  <button class="yes" id="ry" title="key Y">Yes (Y)</button><button class="no" id="rn" title="key N">No (N)</button><button id="rc" title="remove the answer for this finding">clear</button>
+  <input id="rnote" placeholder="note (optional)" size="26" title="free text, saved with the answer">
+  <button id="rnext" title="next finding without an answer in the current filter (key U)">next unanswered (U)</button>
+  <span id="rprog"></span>
+  <span class="sp"></span>
+  <input id="rname" placeholder="your name or initials" size="16" title="written into the Excel file as rater">
+  <button id="rblind" title="hide category and source (key B)">Blind mode: OFF (B)</button>
+  <select id="rscope" title="which findings go into the download"><option value="answered">only answered findings</option><option value="all">all findings</option></select>
+  <button id="rxlsx">Download Excel</button><button id="rcsv">CSV</button>
+ </div>
+ <div id="main">
+  <div class="col">
+   <h3 title="axial slice, 48 x 48 mm around the centre; starts at zoom 1.5x">Axial (radiological: patient right on screen left)</h3>
+   <div class="view" id="vax"><div class="zoomer"><div class="layer" id="axi"></div><div class="layer ov" id="axo"></div></div><div class="ring" id="rax" title="the selected finding"></div>
+    <span class="ori" style="left:50%;top:3px">A</span><span class="ori" style="left:4px;top:47%">R</span><span class="ori" style="right:4px;top:47%">L</span></div>
+   <div class="ctl">
+    <button id="zdn" title="lower slice (key Down / wheel)">slice &minus;</button><button id="zup" title="higher slice (key Up / wheel)">slice +</button>
+    <span class="v" id="zlab"></span><button id="zc">centre</button>
+    <button id="zmo" title="zoom out (key -)">zoom &minus;</button><button id="zmi" title="zoom in (key +)">zoom +</button><span class="v" id="zmlab"></span>
+   </div>
+   <div class="legend"><span><i class="sw" style="background:var(--ref)"></i>reference (VALDO annotation)</span><span><i class="sw" style="background:var(--det)"></i>detector</span><span><i class="sw" style="background:var(--ax)"></i>axial level</span></div>
+  </div>
+  <div class="col">
+   <h3 title="voxels within +-8 mm of the centre; the selected finding opaque, neighbours faint">3D neighbourhood (drag = rotate, wheel = zoom)</h3>
+   <div id="three"><div class="msg" id="tmsg">loading 3D ...</div></div>
+   <div class="ctl">
+    <button id="t3r">reset view</button>
+    <label><input type="checkbox" id="t3p" checked> axial plane</label>
+    <label><input type="checkbox" id="t3r1" checked> reference</label>
+    <label><input type="checkbox" id="t3d" checked> detector</label>
+   </div>
+   <div class="legend"><span>detector = small solid cubes, reference = translucent cubes; box 16 x 16 x 16 mm; axes R, S, A</span></div>
+  </div>
+  <div class="col">
+   <h3>Coronal (patient right on screen left)</h3>
+   <div class="view" id="vcor"><div class="zoomer"><div class="layer" id="cori"></div><div class="layer ov" id="coro"></div><div class="zline" id="corz"></div></div><div class="ring" id="rcor"></div><span class="ori" style="left:50%;top:3px">S</span></div>
+   <h3>Sagittal (anterior on screen left)</h3>
+   <div class="view" id="vsag"><div class="zoomer"><div class="layer" id="sagi"></div><div class="layer ov" id="sago"></div><div class="zline" id="sagz"></div></div><div class="ring" id="rsag"></div><span class="ori" style="left:50%;top:3px">S</span><span class="ori" style="left:4px;top:47%">A</span></div>
+  </div>
+ </div>
+</section>
+
+<div id="methods">
+<b>Methods</b> <button onclick="document.getElementById('methods').style.display='none'" style="float:right">close</button>
+<p><b>Data.</b> VALDO 2021 challenge, Task 2 (cerebral microbleeds on T2*-weighted MRI): the 57 cases used for cross-validation (sites
+SABRE sub-1xx, Rotterdam Scan Study sub-2xx, ALFA sub-3xx). Reference = the challenge annotation. Every case is shown with the models of the
+cross-validation fold that never saw it (5 folds).</p>
+<p><b>Detector.</b> Two-stage chain, the public starting model of our clinical paper. Stage 1: anisotropic 3D U-Net (inputs: inverted T2* image
+and its fast radial symmetry transform); its probability map is cut at 0.15, voxels are grouped into 26-connected candidates (at least
+1 mm&sup3;, at most 2100 voxels, majority of the candidate not in CSF according to SynthSeg). Stage 2: a small 3D CNN scores a patch around each
+candidate; candidates with a score at or above the threshold are accepted; the threshold is chosen inside each cross-validation fold for the best
+out-of-fold F1 of its training cases (values used: <span id="mthr"></span>). Seed offset 0 of the selection run, recomputed on CPU on 23.11.2026 to record the decision for every candidate; training on CPU is not bit-identical, and this run has 3 false detections fewer than the stored run of the selection (cases sub-227, sub-228, sub-302; found and missed microbleeds identical; pooled lesion F1 0.623 instead of 0.616).</p>
+<p><b>Findings and statistics.</b> Clusters are 26-connected; "touch" = at least one shared voxel. TP = accepted detection touching a reference
+microbleed; FP = accepted detection touching none; FN = reference microbleed touched by no accepted detection. Sensitivity = reference
+microbleeds found / all; precision = correct detections / all detections; lesion F1 = 2&middot;found / (2&middot;found + false + missed), pooled over all
+cases. Size = diameter of the circle with the area of the largest axial cross-section; classes &lt;2, 2&ndash;5, &gt;5 mm (for found / missed: the
+size of the reference microbleed; for false detections: the size of the detection). Volume in ml = voxels &times; 0.25 mm&sup3; / 1000.</p>
+<p><b>Display.</b> Model grid 0.5 &times; 0.5 &times; 1.0 mm (acquired slices 3&ndash;5 mm, so coronal and sagittal views are interpolated). Arrays turned to
+RAS with one transform for image, reference and detections, shown radiologically. The stored analysis image is inverted (microbleeds bright);
+it is turned back for display (microbleeds dark). Window per case: 1st&ndash;99.5th percentile of the brain voxels. Crops 48 &times; 48 mm, upsampled 3&times;
+in-plane by cubic spline and saved as lossless PNG; outlines from voxel replication (reference 2-pixel ring inside, detector 2-pixel ring
+outside). Thumbnails 16 &times; 16 mm.</p>
+<p><b>Keys.</b> O overlays, &larr; &rarr; finding, &uarr; &darr; or wheel slice, + &minus; zoom, Y / N answer, U next unanswered, B blind mode.</p>
+<p><b>Software.</b> Python 3.12.15, NumPy 2.2.6, SciPy 1.18.1, nibabel 5.4.2, Pillow 12.3.0, three.js r128 and SheetJS 0.18.5 (local files); built 23.11.2026.</p>
+</div>
+<footer>
+ Research and teaching use only; not a medical device. Data: VALDO 2021 challenge, Task 2 training data, Zenodo
+ <a href="https://doi.org/10.5281/zenodo.4520773">10.5281/zenodo.4520773</a>, licence
+ <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a>; this page and its images are shared under the same licence.
+ Full attribution (cohorts, funders, ALFA study) on <a href="../about.html">Data, attribution and licence</a>. Changes made: bias-field correction,
+ resampling, cropping, conversion of selected slices to 8-bit images, outlines. Software: Python 3.12.15, NumPy 2.2.6, SciPy 1.18.1, nibabel 5.4.2, Pillow 12.3.0, three.js r128 and SheetJS 0.18.5 (local files); built 23.11.2026.
+</footer>
+<script src="vendor/three.min.js"></script>
+<script src="data.js"></script>
+<script src="vendor/xlsx.full.min.js"></script>
+<script>
+const D = window.DATA, F = D.findings, C = Object.fromEntries(D.cases.map(c => [c.case, c]));
+const CATN = {TP: "correct", FP: "extra (false CMB)", FN: "missed"}, CODE = {TP: "TP", FP: "FP", FN: "FN"};
+const CATT = {TP: "accepted detection touching a reference microbleed", FP: "accepted detection touching no reference microbleed", FN: "reference microbleed touched by no detection"};
+const CATCOL = {TP: "var(--tp)", FP: "var(--fp)", FN: "var(--fn)"}, SIZES = ["<2 mm", "2-5 mm", ">5 mm"], SITES = ["SABRE", "RSS", "ALFA"];
+const pct = (a, b) => b ? (100 * a / b).toFixed(0) + " %" : "–";
+document.getElementById("mthr").textContent = D.threshold.join(", ");
+// ---------------- overview
+(function overview() {
+  const L = D.lesion, n = D.cases.length, det = F.filter(f => f.cat != "FN").length, tpd = F.filter(f => f.cat == "TP").length;
+  const f1 = 2 * L.found / (2 * L.found + L.false + (L.reference - L.found));
+  const card = (v, l, s, t) => '<div class="card" title="' + t + '"><div class="v">' + v + '</div><div class="l">' + l + '</div>' + (s ? '<div class="s">' + s + '</div>' : '') + '</div>';
+  document.getElementById("cards").innerHTML =
+    card(n, "cases", D.cases.filter(c => c.n_ref > 0).length + " with microbleeds", "VALDO Task 2 cross-validation cases") +
+    card(L.reference, "reference microbleeds", "annotated by the challenge", "26-connected clusters of the reference mask") +
+    card(pct(L.found, L.reference), "found (sensitivity)", L.found + " of " + L.reference, "reference microbleeds touched by an accepted detection") +
+    card(L.false, "false CMB", (L.false / n).toFixed(2) + " per scan", "accepted detections touching no reference microbleed") +
+    card(pct(tpd, det), "precision", tpd + " of " + det + " detections correct", "correct detections / all accepted detections") +
+    card(f1.toFixed(2), "lesion F1", "pooled over all cases", "2·found / (2·found + false + missed)");
+  const R = D.ref_lesions, row = (lab, a, fd, fp) => '<tr><td>' + lab + '</td><td>' + a + '</td><td>' + fd + '</td><td>' + pct(fd, a) + '<span class="bar" style="width:' + (a ? 60 * fd / a : 0) + 'px"></span></td><td>' + fp + '</td></tr>';
+  let h = '<table><tr><th>size class</th><th title="reference microbleeds">reference</th><th>found</th><th>sensitivity</th><th title="false detections of this size">false CMB</th></tr>';
+  for (const s of SIZES) h += row(s, R.filter(r => r.cls == s).length, R.filter(r => r.cls == s && r.found).length, F.filter(f => f.cat == "FP" && f.cls == s).length);
+  document.getElementById("tsize").innerHTML = h + '</table>';
+  h = '<table><tr><th>site</th><th>cases</th><th>reference</th><th>found</th><th>sensitivity</th><th>false CMB / scan</th></tr>';
+  for (const s of SITES) { const cs = D.cases.filter(c => c.site == s), ids = new Set(cs.map(c => c.case)); const a = R.filter(r => ids.has(r.case)), fd = a.filter(r => r.found).length, fp = F.filter(f => f.cat == "FP" && ids.has(f.case)).length;
+    h += '<tr><td>' + s + '</td><td>' + cs.length + '</td><td>' + a.length + '</td><td>' + fd + '</td><td>' + pct(fd, a.length) + '<span class="bar" style="width:' + (a.length ? 60 * fd / a.length : 0) + 'px"></span></td><td>' + (cs.length ? (fp / cs.length).toFixed(2) : "–") + '</td></tr>'; }
+  document.getElementById("tsite").innerHTML = h + '</table>';
+  document.getElementById("ovnote").textContent = "Findings on this page: " + D.counts.TP + " correct detections, " + D.counts.FP + " extra detections, " + D.counts.FN +
+    " missed microbleeds. One detection can touch several reference microbleeds, so correct detections and found microbleeds can differ. Hover a number for its definition.";
+})();
+// ---------------- filters + strip
+let selC = new Set(["FP"]), selS = new Set(SIZES), cur = null, dz = 0, zoom = 1.5, ov = true;
+const fb = document.getElementById("filters");
+function grp(title, items, set, lab, col, count) {
+  const g = document.createElement("div"); g.className = "fgrp"; g.innerHTML = '<div class="gh">' + title + '</div><div class="row"></div>';
+  for (const k of items) { const b = document.createElement("button"); b.dataset.k = k; b.dataset.g = title;
+    b.innerHTML = (col ? '<span class="dot" style="background:' + col[k] + '"></span>' : '') + lab(k) + ' <span class="n">' + count(k) + '</span>';
+    b.onclick = () => { set.has(k) ? set.delete(k) : set.add(k); buildStrip(); }; g.querySelector(".row").appendChild(b); }
+  fb.appendChild(g);
+}
+grp("CATEGORY", ["TP", "FP", "FN"], selC, k => CATN[k], CATCOL, k => F.filter(f => f.cat == k).length);
+grp("SIZE CLASS", SIZES, selS, k => k, null, k => F.filter(f => f.cls == k).length);
+{ const g = document.createElement("div"); g.className = "fgrp"; g.innerHTML = '<div class="gh">&nbsp;</div><div class="row"></div>';
+  const b = document.createElement("button"); b.className = "on"; b.textContent = "show all " + F.length; b.style.opacity = 1;
+  b.onclick = () => { selC = new Set(["TP", "FP", "FN"]); selS = new Set(SIZES); buildStrip(); }; g.querySelector(".row").appendChild(b); fb.appendChild(g); }
+function visible() { return F.filter(f => selC.has(f.cat) && selS.has(f.cls)); }
+function img(f, s) { return "img/" + f.case + "/" + f.id + s; }
+function buildStrip() {
+  for (const b of fb.querySelectorAll("button[data-k]")) b.classList.toggle("on", (b.dataset.g == "CATEGORY" ? selC : selS).has(b.dataset.k));
+  const st = document.getElementById("strip"); st.innerHTML = ""; const V = visible(); let last = null, box = null;
+  for (const f of V) {
+    if (f.case != last) { const c = C[f.case], p = document.createElement("div"); p.className = "pat";
+      p.innerHTML = '<div class="ph" title="site · reference microbleeds · found / extra / missed">' + f.case + ' · ' + c.site + ' · ref ' + c.n_ref + ' · ' + c.tp + ' / ' + c.fp + ' / ' + c.fn + '</div><div class="tiles"></div>';
+      st.appendChild(p); box = p.lastChild; last = f.case; }
+    const t = document.createElement("div"); t.className = "tile c-" + f.cat; t.dataset.id = f.id; t.title = CATN[f.cat] + " · " + f.diam + " mm (" + f.cls + ") · slice " + f.slice;
+    t.innerHTML = '<img loading="lazy" src="' + img(f, ov ? "_t.png" : "_t_p.png") + '" alt=""><div class="tl">' + CATN[f.cat] + ' · ' + f.diam + ' mm</div>';
+    t.onclick = () => select(f.id); box.appendChild(t);
+  }
+  if (!V.length) st.innerHTML = '<span style="color:var(--muted);padding:8px">no finding with this filter</span>';
+  if (V.length && (!cur || !V.includes(cur))) select(V[0].id); else markSel();
+  rshow();
+}
+function markSel() { for (const t of document.querySelectorAll(".tile")) t.classList.toggle("sel", cur && t.dataset.id == cur.id); }
+function select(id) {
+  cur = F.find(f => f.id == id); dz = 0; markSel();
+  const t = document.querySelector('.tile[data-id="' + id + '"]'); if (t) t.scrollIntoView({block: "nearest", inline: "nearest"});
+  const c = C[cur.case];
+  document.getElementById("info").innerHTML =
+    '<span class="big" style="color:' + CATCOL[cur.cat] + '" title="' + CATT[cur.cat] + '">' + CATN[cur.cat] + '</span>' +
+    '<span title="diameter of the circle with the area of the largest axial cross-section">size ' + cur.diam + ' mm (' + cur.cls + ')</span>' +
+    '<span title="voxels x 0.25 mm3 / 1000">' + cur.vox + ' voxels, ' + cur.ml + ' ml</span>' +
+    (cur.p2 == null ? '' : '<span class="rinfo" title="stage-2 score of this candidate (accepted at the threshold); stage-1 = highest probability inside">stage-2 score ' + cur.p2.toFixed(3) + ' · stage-1 max ' + cur.p1.toFixed(2) + '</span>') +
+    '<span title="axial slice of the centre, counted from the lowest slice of the model grid (1 mm)">slice ' + cur.slice + ' of ' + cur.nz + '</span>' +
+    '<span class="rinfo" title="case: site, reference microbleeds, found / extra / missed">' + cur.case + ' (' + c.site + '): ref ' + c.n_ref + ', ' + c.tp + ' / ' + c.fp + ' / ' + c.fn + '</span>' +
+    '<a href="../qc/#' + cur.case + '" target="_blank" title="opens this case in the slice viewer: whole axial slices, every slice of the brain">whole brain in the slice viewer &#8599;</a>';
+  for (const [i, s] of [["axi", "_ax.png"], ["axo", "_ax_o.png"], ["cori", "_cor.png"], ["coro", "_cor_o.png"], ["sagi", "_sag.png"], ["sago", "_sag_o.png"]])
+    document.getElementById(i).style.backgroundImage = 'url("' + img(cur, s) + '")';
+  for (const i of ["axi", "axo"]) document.getElementById(i).style.backgroundSize = "100% " + (2 * D.DZ + 1) * 100 + "%";
+  for (const i of ["cori", "coro", "sagi", "sago"]) document.getElementById(i).style.backgroundSize = "100% 100%";
+  updZ(); build3D(); rshow();
+}
+function updZ() {
+  const k = D.DZ - dz;   // strip runs from the lowest slice (top) to the highest; dz > 0 = higher slice
+  for (const i of ["axi", "axo"]) document.getElementById(i).style.backgroundPosition = "0 " + ((D.DZ + dz) / (2 * D.DZ) * 100) + "%";
+  const z = cur.slice + dz, out = z < 1 || z > cur.nz;
+  document.getElementById("zlab").textContent = "slice " + z + " (" + (dz >= 0 ? "+" : "") + dz + " mm)" + (out ? " outside" : "");
+  const fr = (D.HZ - 0.5 - dz) / (2 * D.HZ) * 100;
+  for (const i of ["corz", "sagz"]) document.getElementById(i).style.top = fr + "%";
+  setPlane(); rings();
+}
+function rings() { const oz = (D.HZ - 0.5) / (2 * D.HZ) * 100;   // ring always on the selected finding (same as the grey-zone page, 23.11.)
+  for (const [id, y] of [["rax", (D.HX - 0.5) / (2 * D.HX) * 100], ["rcor", oz], ["rsag", oz]]) { const r = document.getElementById(id); r.style.left = (D.HX - 0.5) / (2 * D.HX) * 100 + "%"; r.style.top = y + "%"; r.classList.toggle("off", id == "rax" && dz != 0); } }
+function setZoom() {
+  const o = (D.HX - 0.5) / (2 * D.HX) * 100, oz = (D.HZ - 0.5) / (2 * D.HZ) * 100;   // = centre voxel after the radiological flip; the ring sits here
+  document.querySelector("#vax .zoomer").style.cssText = "transform:scale(" + zoom + ");transform-origin:" + o + "% " + o + "%";
+  for (const v of ["#vcor", "#vsag"]) document.querySelector(v + " .zoomer").style.cssText = "transform:scale(" + zoom + ");transform-origin:" + o + "% " + oz + "%";
+  document.getElementById("zmlab").textContent = "zoom " + zoom + "x (" + Math.round(2 * D.HX * D.zooms[0] / zoom) + " mm)";
+}
+function ticks() {
+  const add = (vid, fx, fy) => { const v = document.getElementById(vid);
+    for (const st of ["left:calc(" + fx + "% - 7px);top:0;border-top-color:#fff", "left:calc(" + fx + "% - 7px);bottom:0;border-bottom-color:#fff",
+                      "top:calc(" + fy + "% - 7px);left:0;border-left-color:#fff", "top:calc(" + fy + "% - 7px);right:0;border-right-color:#fff"]) {
+      const t = document.createElement("div"); t.className = "tick"; t.style.cssText = st; v.appendChild(t); } };
+  add("vax", 50, 50); add("vcor", 50, (D.HZ - 0.5) / (2 * D.HZ) * 100); add("vsag", 50, (D.HZ - 0.5) / (2 * D.HZ) * 100);
+}
+function stepZ(d) { dz = Math.max(-D.DZ, Math.min(D.DZ, dz + d)); updZ(); }
+function stepF(d) { const V = visible(); if (!V.length) return; let i = V.indexOf(cur); i = (i + d + V.length) % V.length; select(V[i].id); }
+function setZ(z) { zoom = Math.max(1, Math.min(6, z)); setZoom(); }
+document.getElementById("zup").onclick = () => stepZ(1); document.getElementById("zdn").onclick = () => stepZ(-1); document.getElementById("zc").onclick = () => { dz = 0; updZ(); };
+document.getElementById("zmi").onclick = () => setZ(zoom + 0.5); document.getElementById("zmo").onclick = () => setZ(zoom - 0.5);
+document.getElementById("vax").addEventListener("wheel", e => { e.preventDefault(); stepZ(e.deltaY < 0 ? 1 : -1); }, {passive: false});
+document.getElementById("strip").addEventListener("wheel", e => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { e.preventDefault(); e.currentTarget.scrollLeft += e.deltaY; } }, {passive: false});
+function toggleOv() { ov = !ov; document.body.classList.toggle("noov", !ov); document.getElementById("ovbtn").textContent = "Overlays: " + (ov ? "ON" : "OFF") + " (O)";
+  for (const t of document.querySelectorAll(".tile")) { const f = F.find(x => x.id == t.dataset.id); t.querySelector("img").src = img(f, ov ? "_t.png" : "_t_p.png"); } }
+document.getElementById("ovbtn").onclick = toggleOv;
+document.getElementById("mbtn").onclick = () => document.getElementById("methods").style.display = "block";
+document.addEventListener("keydown", e => {
+  if (e.target.closest("input,textarea,select")) return;
+  if (e.key == "o" || e.key == "O") toggleOv(); else if (e.key == "ArrowRight") stepF(1); else if (e.key == "ArrowLeft") stepF(-1);
+  else if (e.key == "ArrowUp") { e.preventDefault(); stepZ(1); } else if (e.key == "ArrowDown") { e.preventDefault(); stepZ(-1); }
+  else if (e.key == "+" || e.key == "=") setZ(zoom + 0.5); else if (e.key == "-") setZ(zoom - 0.5); else if (e.key == "Escape") document.getElementById("methods").style.display = "none";
+  else if (e.key == "y" || e.key == "Y") rset("yes"); else if (e.key == "n" || e.key == "N") rset("no"); else if (e.key == "u" || e.key == "U") rnext(); else if (e.key == "b" || e.key == "B") toggleBlind();
+});
+// ---------------- 3D (three.js r128)
+let R3 = null;
+function init3D() {
+  const el = document.getElementById("three");
+  try {
+    const renderer = new THREE.WebGLRenderer({antialias: true, preserveDrawingBuffer: true}); renderer.setPixelRatio(window.devicePixelRatio || 1);
+    el.appendChild(renderer.domElement); document.getElementById("tmsg").style.display = "none";
+    const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(40, 1, 0.1, 500); cam.position.set(0, 0, 34);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.55)); const dl = new THREE.DirectionalLight(0xffffff, 0.8); dl.position.set(10, 20, 30); scene.add(dl);
+    const grp = new THREE.Group(); scene.add(grp);
+    const bx = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(16, 16, 16)), new THREE.LineBasicMaterial({color: 0x555c6a})); grp.add(bx);
+    const lab = (txt, col, x, y, z) => { const c = document.createElement("canvas"); c.width = c.height = 64; const g = c.getContext("2d"); g.fillStyle = col; g.font = "bold 44px system-ui"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(txt, 32, 34);
+      const s = new THREE.Sprite(new THREE.SpriteMaterial({map: new THREE.CanvasTexture(c), depthTest: false})); s.scale.set(2.2, 2.2, 1); s.position.set(x, y, z); grp.add(s);
+      const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(x * 0.85, y * 0.85, z * 0.85)]), new THREE.LineBasicMaterial({color: col})); grp.add(l); };
+    lab("R", "#ff6b6b", 10, 0, 0); lab("S", "#7dff9a", 0, 10, 0); lab("A", "#6bb5ff", 0, 0, -10);
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(16, 16), new THREE.MeshBasicMaterial({color: 0x33d6e0, transparent: true, opacity: 0.12, side: THREE.DoubleSide, depthWrite: false}));
+    plane.rotation.x = -Math.PI / 2; grp.add(plane);
+    R3 = {renderer, scene, cam, grp, plane, meshes: [], el};
+    const size = () => { const w = el.clientWidth, h = el.clientHeight; renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); render3(); };
+    new ResizeObserver(size).observe(el); size();
+    let drag = null;
+    el.addEventListener("pointerdown", e => { drag = [e.clientX, e.clientY]; el.setPointerCapture(e.pointerId); el.style.cursor = "grabbing"; });
+    el.addEventListener("pointermove", e => { if (!drag) return; grp.rotation.y += (e.clientX - drag[0]) * 0.01; grp.rotation.x += (e.clientY - drag[1]) * 0.01; drag = [e.clientX, e.clientY]; render3(); });
+    el.addEventListener("pointerup", () => { drag = null; el.style.cursor = "grab"; });
+    el.addEventListener("wheel", e => { e.preventDefault(); cam.position.z = Math.max(10, Math.min(120, cam.position.z * (e.deltaY > 0 ? 1.1 : 0.9))); render3(); }, {passive: false});
+    resetView();
+  } catch (err) { document.getElementById("tmsg").textContent = "3D view not available (WebGL): " + err.message; R3 = null; }
+}
+function resetView() { if (!R3) return; R3.grp.rotation.set(0.35, -0.45, 0); R3.cam.position.set(0, 0, 34); render3(); }
+function render3() { if (!R3) return; R3.renderer.render(R3.scene, R3.cam);
+  if (location.hash.includes("snap3d")) {   // layout check only: headless screenshots do not capture WebGL, so copy it into a 2-D canvas
+    let c = document.getElementById("snap3d"); if (!c) { c = document.createElement("canvas"); c.id = "snap3d"; c.style.cssText = "position:absolute;inset:0;width:100%;height:100%;pointer-events:none"; R3.el.appendChild(c); }
+    const s = R3.renderer.domElement; c.width = s.width; c.height = s.height; c.getContext("2d").drawImage(s, 0, 0); } }
+function setPlane() { if (!R3 || !cur) return; R3.plane.position.y = dz * D.zooms[2]; R3.plane.visible = document.getElementById("t3p").checked; render3(); }
+const COL3 = {det: 0xE8178A, ref: 0xF4D03F};
+function build3D() {
+  if (!R3) return; for (const m of R3.meshes) { R3.grp.remove(m); m.geometry.dispose(); m.material.dispose(); } R3.meshes = [];
+  const [sx, sy, sz] = D.zooms; const showR = document.getElementById("t3r1").checked, showD = document.getElementById("t3d").checked;
+  for (const name of ["ref", "det"]) {
+    if (name == "det" ? !showD : !showR) continue;
+    for (const focus of [1, 0]) {
+      const pts = cur.vox3[name].filter(p => p[3] == focus); if (!pts.length) continue;
+      const f = name == "det" ? 0.62 : 0.96;
+      const geo = new THREE.BoxGeometry(sx * f, sz * f, sy * f);
+      const mat = name == "det" ? new THREE.MeshLambertMaterial({color: COL3[name], transparent: !focus, opacity: focus ? 1 : 0.35})
+                                : new THREE.MeshLambertMaterial({color: COL3[name], transparent: true, opacity: focus ? 0.45 : 0.18, depthWrite: false});
+      const mesh = new THREE.InstancedMesh(geo, mat, pts.length); const m4 = new THREE.Matrix4();
+      pts.forEach((p, i) => { m4.makeTranslation(p[0] * sx, p[2] * sz, -p[1] * sy); mesh.setMatrixAt(i, m4); });
+      mesh.renderOrder = name == "det" ? 0 : 1; R3.grp.add(mesh); R3.meshes.push(mesh);
+    }
+  }
+  setPlane(); render3();
+}
+document.getElementById("t3r").onclick = resetView; document.getElementById("t3p").onchange = setPlane;
+document.getElementById("t3r1").onchange = build3D; document.getElementById("t3d").onchange = build3D;
+
+// ---------------- rating + Excel
+const RKEY = "valdo_findings_rating_v1"; let RS = {rater: "", ans: {}}, blind = false;
+try { const s = localStorage.getItem(RKEY); if (s) RS = JSON.parse(s); } catch (e) {}
+function rsave() { try { localStorage.setItem(RKEY, JSON.stringify(RS)); } catch (e) {} }
+function rshow() {
+  const a = cur && RS.ans[cur.id];
+  document.getElementById("ry").classList.toggle("on", !!a && a.v == "yes"); document.getElementById("rn").classList.toggle("on", !!a && a.v == "no");
+  document.getElementById("rnote").value = a && a.note ? a.note : "";
+  document.getElementById("rprog").textContent = "answered " + Object.keys(RS.ans).length + " of " + F.length;
+  for (const t of document.querySelectorAll(".tile")) { let b = t.querySelector(".rb"); const v = RS.ans[t.dataset.id];
+    if (!v) { if (b) b.remove(); continue; } if (!b) { b = document.createElement("span"); t.appendChild(b); } b.className = "rb " + v.v; b.textContent = v.v == "yes" ? "CMB" : "no"; }
+}
+function rset(v) { if (!cur) return; if (v == null) delete RS.ans[cur.id]; else RS.ans[cur.id] = {v: v, note: document.getElementById("rnote").value, t: new Date().toISOString()}; rsave(); rshow(); }
+document.getElementById("ry").onclick = () => rset("yes"); document.getElementById("rn").onclick = () => rset("no"); document.getElementById("rc").onclick = () => rset(null);
+document.getElementById("rnote").onchange = () => { if (cur && RS.ans[cur.id]) { RS.ans[cur.id].note = document.getElementById("rnote").value; rsave(); } };
+document.getElementById("rname").value = RS.rater || ""; document.getElementById("rname").onchange = e => { RS.rater = e.target.value; rsave(); };
+function rnext() { const V = visible(); const i = V.indexOf(cur); for (let k = 1; k <= V.length; k++) { const f = V[(i + k) % V.length]; if (!RS.ans[f.id]) { select(f.id); return; } } }
+document.getElementById("rnext").onclick = rnext;
+function toggleBlind() { blind = !blind; document.body.classList.toggle("blind", blind); document.getElementById("rblind").textContent = "Blind mode: " + (blind ? "ON" : "OFF") + " (B)";
+  if (blind) { selC = new Set(["TP", "FP", "FN"]); selS = new Set(SIZES); buildStrip(); if (ov) toggleOv(); } }
+document.getElementById("rblind").onclick = toggleBlind;
+function rrows() {
+  const only = document.getElementById("rscope").value == "answered", FF = only ? F.filter(f => RS.ans[f.id]) : F;
+  const fr = FF.map(f => { const a = RS.ans[f.id] || {}; return {case: f.case, site: C[f.case].site, finding: f.id, category: CODE[f.cat], category_plain: CATN[f.cat],
+    size_mm: f.diam, size_class: f.cls, volume_ml: f.ml, slice: f.slice, stage2_score: f.p2 == null ? "" : +f.p2.toFixed(3),
+    answer_is_CMB: a.v || "", note: a.note || "", rater: RS.rater || "", answered_at: a.t || ""}; });
+  const cr = D.cases.filter(c => !only || F.some(f => f.case == c.case && RS.ans[f.id])).map(c => { const fs = F.filter(f => f.case == c.case);
+    const y = fs.filter(f => (RS.ans[f.id] || {}).v == "yes").length, n = fs.filter(f => (RS.ans[f.id] || {}).v == "no").length;
+    return {case: c.case, site: c.site, fold: c.fold, reference_CMB: c.n_ref, detections: c.n_det, correct_TP: c.tp, extra_FP: c.fp, missed_FN: c.fn,
+            findings: fs.length, answered_CMB: y, answered_no: n, unanswered: fs.length - y - n, rater: RS.rater || ""}; });
+  return [fr, cr];
+}
+function fname(ext) { return "VALDO_findings_" + document.getElementById("rscope").value + "_" + (RS.rater || "rater").replace(/[^A-Za-z0-9_-]/g, "") + "_" + new Date().toISOString().slice(0, 10) + "." + ext; }
+document.getElementById("rxlsx").onclick = () => { if (typeof XLSX == "undefined") { alert("Excel library not loaded; use CSV"); return; }
+  const [fr, cr] = rrows(); if (!fr.length) { alert("No answered finding yet: answer some findings, or choose 'all findings'."); return; }
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(fr), "findings"); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(cr), "cases"); XLSX.writeFile(wb, fname("xlsx")); };
+document.getElementById("rcsv").onclick = () => { const [fr] = rrows(); if (!fr.length) { alert("No answered finding yet."); return; } const k = Object.keys(fr[0]);
+  const csv = [k.join(",")].concat(fr.map(r => k.map(x => '"' + String(r[x]).replace(/"/g, '""') + '"').join(","))).join("\n");
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], {type: "text/csv"})); a.download = fname("csv"); a.click(); };
+ticks(); setZoom(); init3D(); buildStrip();
+</script>
+</body></html>
