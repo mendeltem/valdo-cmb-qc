@@ -2,7 +2,7 @@
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>VALDO findings check</title>
 <style>
-:root{--bg:#121418;--panel:#1b1e24;--line:#343945;--text:#e6e8ec;--muted:#9aa1ad;--det:#E8178A;--ref:#F4D03F;--tp:#3BB273;--fp:#E8178A;--fn:#8f6bff;--ax:#33d6e0;--acc:#5b8def}
+:root{--bg:#121418;--panel:#1b1e24;--line:#343945;--text:#e6e8ec;--muted:#9aa1ad;--det:#E8178A;--ref:#2F80FF;--tp:#3BB273;--fp:#E8178A;--fn:#8f6bff;--ax:#33d6e0;--acc:#5b8def}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,sans-serif}
 a{color:#8fb3ff}
@@ -107,8 +107,8 @@ footer{padding:14px 16px 30px;font-size:12px;color:#8a909b;border-top:1px solid 
  <p>Every <b>finding</b> is one microbleed-sized spot: a <b style="color:var(--tp)">correct</b> detection (TP, touches a reference microbleed),
  an <b style="color:var(--fp)">extra</b> detection (FP, touches none) or a <b style="color:var(--fn)">missed</b> reference microbleed (FN).
  Choose categories and size classes above the tile strip; click a tile to open it. The large views show the axial slices (mouse wheel or
- &uarr; &darr;: &plusmn;6 mm), coronal and sagittal through the centre and the 3D neighbourhood. Outlines: <b style="color:var(--ref)">yellow</b> =
- reference annotation, <b style="color:var(--det)">magenta</b> = detector.</p>
+ &uarr; &darr;: &plusmn;6 mm), coronal and sagittal through the centre and the 3D neighbourhood. Outlines: <b style="color:var(--ref)">blue</b> =
+ reference annotation, <b style="color:var(--det)">magenta</b> = detector; the <b style="color:#ffd166">yellow ring</b> marks the selected finding and always encloses it.</p>
  <p><b>Your own rating.</b> Answer <b>Is this a microbleed?</b> with Yes (Y) or No (N) for as many findings as you like. Answers stay in this
  browser only. <b>Download Excel</b> writes your answers (only the answered ones, or all findings) with sheets <i>findings</i> and
  <i>cases</i>. <b>Blind mode (B)</b> hides category and source so the answer is not influenced.</p></details>
@@ -182,17 +182,17 @@ outside). Thumbnails 16 &times; 16 mm.</p>
 <p><b>Whole brain.</b> Button or key W, or zoom &minus; at 1x: all three views switch together. The axial view shows the whole slice of the case
 (every slice that contains brain, on the native 0.5 mm grid, same window and orientation, stored as JPEG quality 95 to keep the site small); the
 wheel then moves through all slices and zoom + zooms around the finding. Coronal and sagittal show the whole slice through the finding centre
-(square in mm; dashed line = current axial level). Outlines 1 pixel. The yellow ring marks the selected finding in every view and mode, also with
+(square in mm; dashed line = current axial level). Outlines 1 pixel. The yellow ring marks the selected finding in every view and mode (its size follows the finding and the zoom, so it encloses it), also with
 overlays off (dashed on axial slices other than its centre slice).</p>
 <p><b>Keys.</b> W whole brain, O overlays, &larr; &rarr; finding, &uarr; &darr; or wheel slice, + &minus; zoom, Y / N answer, U next unanswered, B blind mode.</p>
-<p><b>Software.</b> Python 3.12.15, NumPy 2.2.6, SciPy 1.18.1, nibabel 5.4.2, Pillow 12.3.0, three.js r128 and SheetJS 0.18.5 (local files); built 23.11.2026.</p>
+<p><b>Software.</b> Python 3.12.15, NumPy 2.2.6, SciPy 1.18.1, nibabel 5.4.2, Pillow 12.3.0, three.js r128 and SheetJS 0.18.5 (local files); built 24.11.2026.</p>
 </div>
 <footer>
  Research and teaching use only; not a medical device. Data: VALDO 2021 challenge, Task 2 training data, Zenodo
  <a href="https://doi.org/10.5281/zenodo.4520773">10.5281/zenodo.4520773</a>, licence
  <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a>; this page and its images are shared under the same licence.
  Full attribution (cohorts, funders, ALFA study) on <a href="../about.html">Data, attribution and licence</a>. Changes made: bias-field correction,
- resampling, cropping, conversion of selected slices to 8-bit images, outlines. Software: Python 3.12.15, NumPy 2.2.6, SciPy 1.18.1, nibabel 5.4.2, Pillow 12.3.0, three.js r128 and SheetJS 0.18.5 (local files); built 23.11.2026.
+ resampling, cropping, conversion of selected slices to 8-bit images, outlines. Software: Python 3.12.15, NumPy 2.2.6, SciPy 1.18.1, nibabel 5.4.2, Pillow 12.3.0, three.js r128 and SheetJS 0.18.5 (local files); built 24.11.2026.
 </footer>
 <script src="vendor/three.min.js"></script>
 <script src="data.js"></script>
@@ -299,9 +299,18 @@ function updZ() {
   for (const i of ["corz", "sagz"]) document.getElementById(i).style.top = fr + "%";
   setPlane(); rings();
 }
+function radiusMM(f, view) {   // 24.11. (user: the yellow ring is the marker): farthest voxel of the selected cluster from its centre within this view's plane, in mm, + 1 mm margin
+  let r = 0; for (const k in f.vox3) for (const [x, y, z, foc] of f.vox3[k]) if (foc) { const a = Math.abs(x) * 0.5 + 0.25, b = Math.abs(y) * 0.5 + 0.25, c = Math.abs(z) + 0.5;
+    r = Math.max(r, view == "rax" ? Math.hypot(a, b) : view == "rcor" ? Math.hypot(a, c) : Math.hypot(b, c)); }
+  return r + 1; }
 function rings() { if (!cur) return; const o = (D.HX - 0.5) / (2 * D.HX) * 100, oz = (D.HZ - 0.5) / (2 * D.HZ) * 100;   // ring always on the selected finding (23.11.)
-  const P = whole ? [["rax", wbPos()], ["rcor", corPos(cur.c[2])], ["rsag", sagPos(cur.c[2])]] : [["rax", [o, o]], ["rcor", [o, oz]], ["rsag", [o, oz]]];
-  for (const [id, [x, y]] of P) { const r = document.getElementById(id); r.style.left = x + "%"; r.style.top = y + "%"; r.classList.toggle("off", id == "rax" && dz != 0); } }
+  const c = C[cur.case], fov = whole ? {rax: Math.max(c.shape[0], c.shape[1]) * 0.5, rcor: Math.max(c.shape[0] * 0.5, c.shape[2]), rsag: Math.max(c.shape[1] * 0.5, c.shape[2])}
+                                     : {rax: 2 * D.HX * 0.5, rcor: 2 * D.HX * 0.5, rsag: 2 * D.HX * 0.5};   // mm across the square view at zoom 1
+  const P = whole ? [["rax", wbPos()], ["rcor", corPos(cur.c[2])], ["rsag", sagPos(cur.c[2])]] : [["rax", [o, o]], ["rcor", [o, oz]], ["rsag", [o, oz]]]
+  for (const [id, [x, y]] of P) { const r = document.getElementById(id), w = r.parentElement.clientWidth, d = Math.max(22, 2 * radiusMM(cur, id) * w / fov[id] * zoom + 6);
+    r.style.width = r.style.height = d + "px"; r.style.margin = (-d / 2) + "px 0 0 " + (-d / 2) + "px";
+    r.style.left = x + "%"; r.style.top = y + "%"; r.classList.toggle("off", id == "rax" && dz != 0); } }
+window.addEventListener("resize", rings);
 function setZoom() {
   const o = (D.HX - 0.5) / (2 * D.HX) * 100, oz = (D.HZ - 0.5) / (2 * D.HZ) * 100;   // = centre voxel after the radiological flip; the ring sits here
   const [wx, wy] = whole && cur ? wbPos() : [o, o];
@@ -372,7 +381,7 @@ function render3() { if (!R3) return; R3.renderer.render(R3.scene, R3.cam);
     let c = document.getElementById("snap3d"); if (!c) { c = document.createElement("canvas"); c.id = "snap3d"; c.style.cssText = "position:absolute;inset:0;width:100%;height:100%;pointer-events:none"; R3.el.appendChild(c); }
     const s = R3.renderer.domElement; c.width = s.width; c.height = s.height; c.getContext("2d").drawImage(s, 0, 0); } }
 function setPlane() { if (!R3 || !cur) return; R3.plane.position.y = dz * D.zooms[2]; R3.plane.visible = document.getElementById("t3p").checked; render3(); }
-const COL3 = {det: 0xE8178A, ref: 0xF4D03F};
+const COL3 = {det: 0xE8178A, ref: 0x2F80FF};
 function build3D() {
   if (!R3) return; for (const m of R3.meshes) { R3.grp.remove(m); m.geometry.dispose(); m.material.dispose(); } R3.meshes = [];
   const [sx, sy, sz] = D.zooms; const showR = document.getElementById("t3r1").checked, showD = document.getElementById("t3d").checked;
